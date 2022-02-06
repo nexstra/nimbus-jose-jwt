@@ -1,16 +1,19 @@
 package com.nimbusds.jose.mint;
 
 
-import java.net.URI;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import junit.framework.TestCase;
-
-import com.nimbusds.jose.*;
+import com.nimbusds.jose.HeaderParameterNames;
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.crypto.factories.DefaultJWSSignerFactory;
-import com.nimbusds.jose.jwk.*;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSelector;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.SamplePEMEncodedObjects;
 import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -21,6 +24,13 @@ import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import junit.framework.TestCase;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class DefaultJWSMinterTest extends TestCase {
 	public void testConstructor() {
@@ -116,6 +126,11 @@ public class DefaultJWSMinterTest extends TestCase {
 					return jwks;
 				}
 				return Collections.singletonList(jwks.get(jwks.size() - 1));
+			}
+
+			@Override
+			public void close() throws IOException {
+				// empty
 			}
 		};
 		final ConfigurableJWSMinter<SecurityContext> minter = new DefaultJWSMinter<>();

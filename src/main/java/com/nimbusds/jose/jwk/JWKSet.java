@@ -18,25 +18,34 @@
 package com.nimbusds.jose.jwk;
 
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.util.Base64URL;
+import com.nimbusds.jose.util.DefaultResourceRetriever;
+import com.nimbusds.jose.util.IOUtils;
+import com.nimbusds.jose.util.JSONArrayUtils;
+import com.nimbusds.jose.util.JSONObjectUtils;
+import com.nimbusds.jose.util.Resource;
+import com.nimbusds.jose.util.StandardCharset;
+import net.jcip.annotations.Immutable;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.net.Proxy;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.cert.Certificate;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
-import java.util.*;
-
-import net.jcip.annotations.Immutable;
-
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.util.*;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -604,12 +613,21 @@ public class JWKSet implements Serializable {
 			} catch (JOSEException e) {
 				continue; // skip key
 			}
-			
+
 			if (octJWK != null) {
 				jwks.add(octJWK);
 			}
 		}
-		
+
 		return new JWKSet(jwks);
 	}
+
+	public boolean isEmpty() {
+		return keys.isEmpty();
+	}
+
+	public int size() {
+		return keys.size();
+	}
+
 }

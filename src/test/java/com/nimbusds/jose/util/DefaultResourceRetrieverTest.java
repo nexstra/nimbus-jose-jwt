@@ -18,6 +18,10 @@
 package com.nimbusds.jose.util;
 
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
@@ -29,13 +33,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static net.jadler.Jadler.*;
+import static net.jadler.Jadler.closeJadler;
+import static net.jadler.Jadler.initJadler;
+import static net.jadler.Jadler.onRequest;
+import static net.jadler.Jadler.port;
+import static net.jadler.Jadler.verifyThatRequest;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.*;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 
 /**
@@ -307,7 +315,7 @@ public class DefaultResourceRetrieverTest {
 			resourceRetriever.retrieveResource(url);
 			fail();
 		} catch (IOException e) {
-			assertTrue(e.getMessage().startsWith("Connection refused"));
+			assertTrue(e.getMessage().contains("Connection refused"));
 		}
 	}
 
@@ -329,10 +337,9 @@ public class DefaultResourceRetrieverTest {
 			resourceRetriever.retrieveResource(url);
 			fail();
 		} catch (IOException e) {
-			assertTrue(e.getMessage().startsWith("Connection refused"));
+			assertTrue(e.getMessage(), e.getMessage().contains("Connection refused"));
 		}
 	}
-
 
 	@Test
 	public void testReadTimeout()

@@ -18,14 +18,24 @@
 package com.nimbusds.jose;
 
 
+import com.nimbusds.jose.jwk.source.JWKSetUnavailableException;
+
 /**
  * Remote key source exception.
  *
  * @author Vladimir Dzhuvinov
  * @version 2016-06-21
  */
-public class RemoteKeySourceException extends KeySourceException {
-	
+public class RemoteKeySourceException extends JWKSetUnavailableException {
+
+	/**
+	 * Creates a new remote key source exception.
+	 *
+	 * @param message The message.
+	 */
+	public RemoteKeySourceException(final String message) {
+		super(message);
+	}
 
 	/**
 	 * Creates a new remote key source exception.

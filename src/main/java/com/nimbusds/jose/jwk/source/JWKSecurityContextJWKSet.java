@@ -17,13 +17,14 @@
 
 package com.nimbusds.jose.jwk.source;
 
-import java.util.List;
-
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.proc.JWKSecurityContext;
+
+import java.io.IOException;
+import java.util.List;
 
 
 /**
@@ -46,4 +47,10 @@ public class JWKSecurityContextJWKSet implements JWKSource<JWKSecurityContext> {
 
 		return jwkSelector.select(new JWKSet(context.getKeys()));
 	}
+
+	@Override
+	public void close() throws IOException {
+		// empty
+	}
+
 }
