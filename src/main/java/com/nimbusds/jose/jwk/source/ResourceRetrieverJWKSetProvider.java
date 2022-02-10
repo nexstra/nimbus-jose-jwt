@@ -17,25 +17,18 @@
 
 package com.nimbusds.jose.jwk.source;
 
-import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.RemoteKeySourceException;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.util.Resource;
-import com.nimbusds.jose.util.ResourceRetriever;
-
 import java.io.IOException;
 import java.net.URL;
-import java.util.logging.Logger;
+
+import com.nimbusds.jose.util.Resource;
+import com.nimbusds.jose.util.ResourceRetriever;
 
 /**
  * Jwk provider that loads them from a {@link URL}
  */
 
-public class ResourceRetrieverJWKSetProvider implements JWKSetProvider {
+public class ResourceRetrieverJWKSetProvider extends AbstractResourceJWKSetProvider {
 
-	private static final Logger LOGGER = Logger.getLogger(ResourceRetrieverJWKSetProvider.class.getName());
-
-	private final URL url;
 	private final ResourceRetriever resourceRetriever;
 
 	/**
@@ -45,61 +38,21 @@ public class ResourceRetrieverJWKSetProvider implements JWKSetProvider {
 	 * @param resourceRetriever ResourceRetriever
 	 */
 	public ResourceRetrieverJWKSetProvider(URL url, ResourceRetriever resourceRetriever) {
-		checkArgument(url != null, "A non-null url is required");
+		super(url);
 		checkArgument(resourceRetriever != null, "A non-null ResourceRetriever is required");
 
-		this.url = url;
 		this.resourceRetriever = resourceRetriever;
 	}
 
-	protected void checkArgument(boolean valid, String message) {
-		if (!valid) {
-			throw new IllegalArgumentException(message);
-		}
-	}
-
-	public JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException {
-		LOGGER.info("Requesting JWKs from " + url + "..");
-
-		Resource res;
+	@Override
+	protected Resource getResource() throws JWKSetTransferException {
 		try {
-			res = resourceRetriever.retrieveResource(url);
+			return resourceRetriever.retrieveResource(url);
 		} catch (IOException e) {
-			throw new RemoteKeySourceException("Couldn't retrieve remote JWK set: " + e.getMessage(), e);
-		}
-		try {
-			JWKSet jwkSet = JWKSet.parse(res.getContent());
-
-			if (jwkSet == null || jwkSet.isEmpty()) {
-				// assume the server returns some kind of incomplete document, treat this
-				// equivalent to an input/output exception.
-				throw new RemoteKeySourceException("No JWKs found at " + url);
-			}
-			LOGGER.info(url + " returned " + jwkSet.size() + " JWKs");
-
-			return jwkSet;
-		} catch (java.text.ParseException e) {
-			// assume the server returns some kind of generic document, treat this
-			// equivalent to an input/output exception.
-
-			throw new RemoteKeySourceException("Couldn't parse remote JWK set: " + e.getMessage(), e);
+			throw new JWKSetTransferException("Couldn't retrieve remote JWK set: " + e.getMessage(), e);
 		}
 	}
-
-	@Override
-	public void close() throws IOException {
-		// do nothing
-	}
-
-	public JWKSetHealth getHealth(boolean refresh) {
-		throw new JWKSetHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
-	}
-
-	@Override
-	public boolean supportsHealth() {
-		return false;
-	}
-
+	
 	// for testing
 	ResourceRetriever getResourceRetriever() {
 		return resourceRetriever;

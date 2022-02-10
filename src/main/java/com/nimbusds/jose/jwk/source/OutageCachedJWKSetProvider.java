@@ -42,13 +42,13 @@ public class OutageCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	}
 
 	@Override
-	JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 		try {
 			// cache value, if successfully refreshed by underlying provider
 
-			JWKSet all = provider.getJWKSet(forceUpdate);
+			JWKSet all = provider.getJWKSet(time, forceUpdate);
 
-			this.cache = new JWKSetCacheItem(all, getExpires(time));
+			this.cache = createJWKSetCacheItem(all, time);
 
 			return all;
 		} catch (JWKSetUnavailableException e1) {

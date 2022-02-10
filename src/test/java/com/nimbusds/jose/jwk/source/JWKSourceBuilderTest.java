@@ -18,6 +18,11 @@ package com.nimbusds.jose.jwk.source;
 
 import org.junit.Test;
 
+import com.nimbusds.jose.proc.SecurityContext;
+
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -121,8 +126,9 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 		assertTrue(jwksProviders.get(3) instanceof JWKSetProvider);
 	}
 
+	// peek into the jwk source and get the underlying set providers
 	private List<JWKSetProvider> jwksProviders(JWKSource jwkSource) {
-		RemoteJWKSet<?> remoteJWKSet = (RemoteJWKSet<?>) jwkSource;
+		UrlJWKSource<?> remoteJWKSet = (UrlJWKSource<?>) jwkSource;
 
 		JWKSetProvider jwksProvider = remoteJWKSet.getProvider();
 
@@ -240,6 +246,17 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 
 		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetProvider);
 		assertTrue(jwksProviders.get(1) instanceof JWKSetProvider);
+	}
+
+	@Test
+	public void testShouldLocalProviderForFileURL() throws MalformedURLException {
+		File file = new File("test");
+		URL url = file.toURI().toURL();
+		JWKSource<SecurityContext> source = JWKSourceBuilder.newBuilder(url).build();
+		
+		List<JWKSetProvider> jwksProviders = jwksProviders(source);
+
+		assertTrue(jwksProviders.get(jwksProviders.size() - 1) instanceof LocalUrlJWKSetProvider);
 	}
 
 }

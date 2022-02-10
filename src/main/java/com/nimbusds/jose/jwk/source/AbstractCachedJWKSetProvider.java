@@ -17,11 +17,10 @@
 
 package com.nimbusds.jose.jwk.source;
 
-import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
 
 /**
- * Jwk provider that caches previously obtained list of Jwk in memory.
+ * JWK provider that caches previously obtained list of JWK in memory.
  */
 
 public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
@@ -32,9 +31,11 @@ public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
 		// https://shipilev.net/blog/2014/safe-public-construction/
 		private final JWKSet value;
 		private final long expires;
-
-		public JWKSetCacheItem(JWKSet value, long expires) {
+		private final long timestamp;
+		
+		public JWKSetCacheItem(JWKSet value, long timestamp, long expires) {
 			this.value = value;
+			this.timestamp = timestamp;
 			this.expires = expires;
 		}
 
@@ -49,6 +50,10 @@ public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
 		public long getExpires() {
 			return expires;
 		}
+		
+		public long getTimestamp() {
+			return timestamp;
+		}
 
 	}
 
@@ -60,19 +65,12 @@ public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
 		this.timeToLive = timeToLive;
 	}
 
-	abstract JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException;
-
 	long getExpires(long time) {
 		return time + timeToLive;
 	}
 
 	long getTimeToLive() {
 		return timeToLive;
-	}
-
-	@Override
-	public JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException {
-		return getJWKSet(System.currentTimeMillis(), forceUpdate);
 	}
 
 	protected JWKSetCacheItem getCache(long time) {
@@ -82,4 +80,19 @@ public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
 		}
 		return null;
 	}
+	
+	protected JWKSetCacheItem createJWKSetCacheItem(JWKSet all, long requestTime) {
+		// save to cache
+		// Set a new timestamp, so that threads which did a 
+		// read-then-force-refresh move can identify that the keys were in 
+		// fact updated if multiple threads wanted to force refresh at the same time
+		long timestamp = currentTimeMillis();
+		
+		return new JWKSetCacheItem(all, timestamp, getExpires(requestTime));
+	}
+	
+	protected long currentTimeMillis() {
+		return System.currentTimeMillis();
+	}
+
 }

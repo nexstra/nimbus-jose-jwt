@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.source.AbstractCachedJWKSetProvider.JWKSetCacheItem;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -50,21 +51,16 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 		this.refreshTimeout = refreshTimeout;
 	}
 
-	@Override
-	public JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException {
-		return getJWKSet(System.currentTimeMillis(), forceUpdate);
-	}
-
-	protected JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 		JWKSetCacheItem cache = this.cache;
-		if (forceUpdate || cache == null || !cache.isValid(time)) {
-			cache = getJwksBlocking(time, cache);
+		if (cache == null || (forceUpdate && cache.getTimestamp() < time) || !cache.isValid(time)) {
+			cache = getJwksBlocking(time);
 		}
 
 		return cache.getValue();
 	}
 
-	protected JWKSetCacheItem getJwksBlocking(long time, JWKSetCacheItem cache) throws KeySourceException {
+	protected JWKSetCacheItem getJwksBlocking(long time) throws KeySourceException {
 		// Synchronize so that the first thread to acquire the lock
 		// exclusively gets to call the underlying provider.
 		// Other (later) threads must wait until the result is ready.
@@ -76,12 +72,13 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 		// but requesting the same data downstream is not better, so
 		// this is a necessary evil.
 
+		JWKSetCacheItem cache = null;
 		try {
 			if(lock.tryLock()) {
 				try {
 					// see if anyone already refreshed the cache while we were
 					// hold getting the lock
-					if (cache == this.cache) {
+					if (!isCacheUpdatedSince(time)) {
 						// Seems cache was not updated.
 						// We hold the lock, so safe to update it now
 						LOGGER.info("Perform JWK cache refresh..");
@@ -107,11 +104,12 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 					try {
 						// see if anyone already refreshed the cache while we were
 						// hold getting the lock
-						if (cache == this.cache) {
+						if (!isCacheUpdatedSince(time)) {
 							// Seems cache was not updated.
 							// We hold the lock, so safe to update it now
-							LOGGER.warning("JWK cache was NOT successfully refreshed while waiting, retry now (with " + lock.getQueueLength() + " waiting)..");
-
+							LOGGER.warning("JWK cache was NOT successfully refreshed while waiting, retry now (with " + lock.getQueueLength() + " waiting).." );
+							LOGGER.warning("Wanted " + time + " got " + this.cache.getTimestamp() + " " + (time - this.cache.getTimestamp()) );
+							
 							cache = loadJWKSetFromProvider(time);
 							
 							LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting)");
@@ -141,8 +139,16 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 		}
 	}
 
+	protected boolean isCacheUpdatedSince(long time) {
+		JWKSetCacheItem latest = this.cache;
+		if(latest == null) {
+			return false;
+		}
+		return time <= latest.getTimestamp();
+	}
+
 	/**
-	 * Load Jwks from wrapped provider. Guaranteed to only run for one thread at a time.
+	 * Load JWKs from wrapped provider. Guaranteed to only run for one thread at a time.
 	 *
 	 * @param time current time
 	 * @return cache item
@@ -150,10 +156,13 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	 */
 
 	protected JWKSetCacheItem loadJWKSetFromProvider(long time) throws KeySourceException {
-		JWKSet all = provider.getJWKSet(false);
+		JWKSet all = provider.getJWKSet(time, false);
 
-		// save to cache
-		return this.cache = new JWKSetCacheItem(all, getExpires(time));
+		JWKSetCacheItem cache = createJWKSetCacheItem(all, time);
+		
+		this.cache = cache;
+		
+		return cache;
 	}
 
 	ReentrantLock getLock() {

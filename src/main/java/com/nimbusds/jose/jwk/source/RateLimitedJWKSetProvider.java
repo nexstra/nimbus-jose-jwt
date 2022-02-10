@@ -25,42 +25,51 @@ import com.nimbusds.jose.jwk.JWKSet;
  * 
  * {@linkplain JWKSetProvider} that limits the number of invocations per time
  * unit. This guards against frequent, potentially costly, downstream calls.
- * 
+ * <br>
+ * <br>
+ * Per default, two invocations per time period is allowed, so that, under normal
+ * operations, there is always one invocation left in case the JWKs are rotated and 
+ * results in an unknown key being requested (triggering a refresh of the keys) by
+ * a legitimate party.
+ *   
+ * The other request is (sometimes) consumed by background refreshes. 
  */
 
 public class RateLimitedJWKSetProvider extends BaseJWKSetProvider {
 
-	private final long millisecondsPerRequest;
+	// interval duration
+	private final long duration;
 	private long nextLimit = -1L;
+	private int counter = 0;
 
 	/**
 	 * Creates a new provider that throttles the number of requests for a JWKSet.
 	 *
-	 * @param millisecondsPerRequest minimum number of milliseconds per downstream request.
+	 * @param duration minimum number of milliseconds per two downstream requests.
 	 * @param provider			   provider to use to request jwk when the bucket allows it.
 	 */
-	public RateLimitedJWKSetProvider(JWKSetProvider provider, long millisecondsPerRequest) {
+	public RateLimitedJWKSetProvider(JWKSetProvider provider, long duration) {
 		super(provider);
-		this.millisecondsPerRequest = millisecondsPerRequest;
+		this.duration = duration;
 	}
 
 	@Override
-	public JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException {
-		return getJWKSet(forceUpdate, System.currentTimeMillis());
-	}
-
-	public JWKSet getJWKSet(boolean forceUpdate, long time) throws KeySourceException {
-		if (nextLimit > time) {
-			throw new RateLimitReachedException();
-		}
-		synchronized (this) {
-			if (nextLimit > time) {
-				throw new RateLimitReachedException();
+	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+		
+		// implementation note: this code is not intended to run many parallel threads
+		// for the same instance, thus use of synchronized will not cause congestion
+		synchronized(this) {
+			if (nextLimit <= time) {
+				nextLimit = time + duration;
+				counter = 1;
+			} else {
+				if(counter <= 0) {
+					throw new RateLimitReachedException();
+				}
+				counter--;
 			}
-			nextLimit = time + millisecondsPerRequest;
 		}
-
-		return provider.getJWKSet(forceUpdate);
+		return provider.getJWKSet(time, forceUpdate);
 	}
 
 }

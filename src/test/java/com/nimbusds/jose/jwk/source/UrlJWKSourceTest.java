@@ -18,6 +18,27 @@
 package com.nimbusds.jose.jwk.source;
 
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.KeySourceException;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKMatcher;
+import com.nimbusds.jose.jwk.JWKSelector;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.DefaultResourceRetriever;
+import com.nimbusds.jose.util.JSONObjectUtils;
+import com.nimbusds.jose.util.Resource;
+import com.nimbusds.jose.util.ResourceRetriever;
+import com.nimbusds.jose.util.StandardCharset;
+import net.jadler.Request;
+import net.jadler.stubbing.Responder;
+import net.jadler.stubbing.StubResponse;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -26,31 +47,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static net.jadler.Jadler.*;
-import static org.junit.Assert.*;
-
-import net.jadler.Request;
-import net.jadler.stubbing.Responder;
-import net.jadler.stubbing.StubResponse;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.RemoteKeySourceException;
-import com.nimbusds.jose.jwk.*;
-import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jose.util.*;
+import static net.jadler.Jadler.closeJadler;
+import static net.jadler.Jadler.initJadler;
+import static net.jadler.Jadler.onRequest;
+import static net.jadler.Jadler.port;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 
-public class RemoteJWKSetTest {
-	
-	
+public class UrlJWKSourceTest {
+
 	private static final RSAKey RSA_JWK_1;
 	private static final RSAKey RSA_JWK_2;
 	private static final RSAKey RSA_JWK_3;
@@ -71,12 +87,10 @@ public class RemoteJWKSetTest {
 		}
 	}
 
-
 	@Before
 	public void setUp() {
 		initJadler();
 	}
-
 
 	@After
 	public void tearDown() {
@@ -87,14 +101,12 @@ public class RemoteJWKSetTest {
 		System.clearProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpSizeLimit");
 	}
 
-
 	@Test
 	public void testConstants() {
 		assertEquals(500, RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT);
 		assertEquals(500, RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT);
 		assertEquals(50 * 1024, RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT);
 	}
-
 
 	@Test
 	public void testSimplifiedConstructor()
@@ -105,21 +117,14 @@ public class RemoteJWKSetTest {
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(200)
-			.withHeader("Content-Type", "application/json")
-			.withBody( JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/jwks.json")
+				.respond()
+				.withStatus(200)
+				.withHeader("Content-Type", "application/json")
+				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
-
-		assertTrue(jwkSetSource.getResourceRetriever() instanceof DefaultResourceRetriever);
-
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertNotNull(jwkSetSource.getResourceRetriever());
-		assertTrue(jwkSetSource.getJWKSetCache() instanceof DefaultJWKSetCache);
-		assertNull(jwkSetSource.getCachedJWKSet());
+		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -130,14 +135,14 @@ public class RemoteJWKSetTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSet out = jwkSetSource.getCachedJWKSet();
+		JWKSetProvider provider = jwkSetSource.getProvider();
+		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false);
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
 		assertEquals("2", out.getKeys().get(1).getKeyID());
 		assertEquals(2, out.getKeys().size());
 	}
-
 
 	@Test
 	public void testWithExplicitRetriever()
@@ -155,21 +160,7 @@ public class RemoteJWKSetTest {
 			.withHeader("Content-Type", "application/json")
 			.withBody( JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(
-			jwkSetURL,
-			new DefaultResourceRetriever(
-				5_000, 2_500, 100_000
-			)
-		);
-
-		assertEquals(5_000, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getConnectTimeout());
-		assertEquals(2_500, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getReadTimeout());
-		assertEquals(100_000, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getSizeLimit());
-
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertNotNull(jwkSetSource.getResourceRetriever());
-		assertTrue(jwkSetSource.getJWKSetCache() instanceof DefaultJWKSetCache);
-		assertNull(jwkSetSource.getCachedJWKSet());
+		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -180,14 +171,14 @@ public class RemoteJWKSetTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSet out = jwkSetSource.getCachedJWKSet();
+		JWKSetProvider provider = jwkSetSource.getProvider();
+		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false);
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
 		assertEquals("2", out.getKeys().get(1).getKeyID());
 		assertEquals(2, out.getKeys().size());
 	}
-
 
 	@Test
 	public void testSelectRSAByKeyID_defaultRetriever()
@@ -205,11 +196,7 @@ public class RemoteJWKSetTest {
 			.withHeader("Content-Type", "application/json")
 			.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
-
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertNotNull(jwkSetSource.getResourceRetriever());
-		assertNull(jwkSetSource.getCachedJWKSet());
+		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -220,7 +207,6 @@ public class RemoteJWKSetTest {
 
 		assertEquals(1, matches.size());
 	}
-
 
 	@Test
 	public void testRefreshRSAByKeyID_defaultRetriever()
@@ -258,11 +244,7 @@ public class RemoteJWKSetTest {
 				}
 			});
 
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
-
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertNotNull(jwkSetSource.getResourceRetriever());
-		assertNull(jwkSetSource.getCachedJWKSet());
+		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).rateLimited(0L).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -274,13 +256,15 @@ public class RemoteJWKSetTest {
 		assertEquals(1, matches.size());
 
 		// Check cache
-		JWKSet out = jwkSetSource.getCachedJWKSet();
+		JWKSet out = jwkSetSource.getProvider().getJWKSet(System.currentTimeMillis(), false);
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
 		assertEquals("2", out.getKeys().get(1).getKeyID());
 		assertEquals(2, out.getKeys().size());
 
+		Thread.sleep(1);
+		
 		// Select 3rd key, expect refresh of JWK set
 		matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("3").build()), null);
 
@@ -292,7 +276,6 @@ public class RemoteJWKSetTest {
 		assertEquals(1, matches.size());
 	}
 
-
 	@Test
 	public void testWithFailoverJWKSource_immutableJWKSet()
 		throws Exception {
@@ -300,119 +283,100 @@ public class RemoteJWKSetTest {
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(404);
-		
-		JWKSource<?> failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK)RSA_JWK_1, (JWK)RSA_JWK_2)));
-		
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL, failover);
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/jwks.json")
+				.respond()
+				.withStatus(404);
 
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertEquals(failover, jwkSetSource.getFailoverJWKSource());
-		assertNull(jwkSetSource.getCachedJWKSet());
+		JWKSource failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, (JWK) RSA_JWK_2)));
+
+		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
-		
+
 		RSAKey m1 = (RSAKey) matches.get(0);
 		assertEquals(RSA_JWK_1.getPublicExponent(), m1.getPublicExponent());
 		assertEquals(RSA_JWK_1.getModulus(), m1.getModulus());
 		assertEquals("1", m1.getKeyID());
-		
-		assertEquals(1, matches.size());
-		
-		assertNull("Cache must not be updated with failover JWK set", jwkSetSource.getCachedJWKSet());
-	}
 
+		assertEquals(1, matches.size());
+	}
 
 	@Test
 	public void testWithFailoverJWKSource_remoteJWKSet()
 		throws Exception {
-		
-		JWKSet jwkSet = new JWKSet(Arrays.asList(RSA_JWK_1, (JWK)RSA_JWK_2));
+
+		JWKSet jwkSet = new JWKSet(Arrays.asList(RSA_JWK_1, (JWK) RSA_JWK_2));
 
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 		URL failoverJWKSetURL = new URL("http://localhost:" + port() + "/failover-jwks.json");
-		
-		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(404);
-		
-		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/failover-jwks.json")
-			.respond()
-			.withStatus(200)
-			.withHeader("Content-Type", "application/json")
-			.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
-		
-		JWKSource<?> failover = new RemoteJWKSet<>(failoverJWKSetURL);
-		
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL, failover);
 
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertEquals(failover, jwkSetSource.getFailoverJWKSource());
-		assertNull(jwkSetSource.getCachedJWKSet());
+		onRequest()
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/jwks.json")
+				.respond()
+				.withStatus(404);
+
+		onRequest()
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/failover-jwks.json")
+				.respond()
+				.withStatus(200)
+				.withHeader("Content-Type", "application/json")
+				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
+
+		JWKSource failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
+
+		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
-		
+
 		RSAKey m1 = (RSAKey) matches.get(0);
 		assertEquals(RSA_JWK_1.getPublicExponent(), m1.getPublicExponent());
 		assertEquals(RSA_JWK_1.getModulus(), m1.getModulus());
 		assertEquals("1", m1.getKeyID());
-		
-		assertEquals(1, matches.size());
-		
-		assertNull("Cache must not be updated with failover JWK set", jwkSetSource.getCachedJWKSet());
-	}
 
+		assertEquals(1, matches.size());
+	}
 
 	@Test
 	public void testWithFailoverJWKSource_fail()
 		throws Exception {
-		
+
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 		URL failoverJWKSetURL = new URL("http://localhost:" + port() + "/failover-jwks.json");
-		
-		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(404);
-		
-		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/failover-jwks.json")
-			.respond()
-			.withStatus(404);
-		
-		JWKSource<?> failover = new RemoteJWKSet<>(failoverJWKSetURL);
-		
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL, failover);
 
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertEquals(failover, jwkSetSource.getFailoverJWKSource());
-		assertNull(jwkSetSource.getCachedJWKSet());
+		onRequest()
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/jwks.json")
+				.respond()
+				.withStatus(404);
+
+		onRequest()
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/failover-jwks.json")
+				.respond()
+				.withStatus(404);
+
+		JWKSource failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
+
+		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		try {
 			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 			fail();
 		} catch (KeySourceException e) {
 			assertEquals(
-				"Couldn't retrieve remote JWK set: " + jwkSetURL +
-					"; Failover JWK source retrieval failed with: " +
-					"Couldn't retrieve remote JWK set: " + failoverJWKSetURL,
-				e.getMessage()
+					"Couldn't retrieve remote JWK set: " + jwkSetURL +
+							"; Failover JWK source retrieval failed with: " +
+							"Couldn't retrieve remote JWK set: " + failoverJWKSetURL,
+					e.getMessage()
 			);
 			Throwable cause = e.getCause();
 			assertTrue(cause instanceof KeySourceException);
 			assertEquals("Couldn't retrieve remote JWK set: " + failoverJWKSetURL, cause.getMessage());
 		}
 	}
-
 
 	@Test
 	public void testInvalidJWKSetURL()
@@ -421,26 +385,21 @@ public class RemoteJWKSetTest {
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withStatus(404);
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/jwks.json")
+				.respond()
+				.withStatus(404);
 
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
-
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-
-		assertNull(jwkSetSource.getCachedJWKSet());
+		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		try {
 			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
-		} catch (RemoteKeySourceException e) {
+		} catch (JWKSetTransferException e) {
 			assertEquals("Couldn't retrieve remote JWK set: " + jwkSetURL, e.getMessage());
 			assertTrue(e.getCause() instanceof FileNotFoundException);
 			assertEquals(jwkSetURL.toString(), e.getCause().getMessage());
 		}
 	}
-
 
 	@Test
 	public void testTimeout()
@@ -450,132 +409,53 @@ public class RemoteJWKSetTest {
 
 		onRequest().respond().withDelay(800, TimeUnit.MILLISECONDS);
 
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
+		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		try {
 			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
 			fail();
-		} catch (RemoteKeySourceException e) {
+		} catch (JWKSetTransferException e) {
 			assertEquals("Couldn't retrieve remote JWK set: Read timed out", e.getMessage());
 			assertTrue(e.getCause() instanceof SocketTimeoutException);
 			assertEquals("Read timed out", e.getCause().getMessage());
 		}
 	}
-
 
 	@Test
 	public void testTimeout_withFailover()
 		throws Exception {
-		
-		JWKSet jwkSet = new JWKSet(Arrays.asList(RSA_JWK_1, (JWK)RSA_JWK_2));
-		
+
+		JWKSet jwkSet = new JWKSet(Arrays.asList(RSA_JWK_1, (JWK) RSA_JWK_2));
+
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
-		URL failoverJWKSetURL = new URL("http://localhost:" + port() + "/failover-jwks.json");
 
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/jwks.json")
-			.respond()
-			.withDelay(800, TimeUnit.MILLISECONDS);
-		
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/jwks.json")
+				.respond()
+				.withDelay(800, TimeUnit.MILLISECONDS);
+
 		onRequest()
-			.havingMethodEqualTo("GET")
-			.havingPathEqualTo("/failover-jwks.json")
-			.respond()
-			.withStatus(200)
-			.withHeader("Content-Type", "application/json")
-			.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
-		
-		JWKSource<?> failover = new RemoteJWKSet<>(failoverJWKSetURL);
-		
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL, failover);
-		
-		assertEquals(jwkSetURL, jwkSetSource.getJWKSetURL());
-		assertEquals(failover, jwkSetSource.getFailoverJWKSource());
-		assertNull(jwkSetSource.getCachedJWKSet());
-		
+				.havingMethodEqualTo("GET")
+				.havingPathEqualTo("/failover-jwks.json")
+				.respond()
+				.withStatus(200)
+				.withHeader("Content-Type", "application/json")
+				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
+
+		JWKSource failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, RSA_JWK_2)));
+		FailoverJWKSource<?> jwkSetSource = (FailoverJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
+
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
-		
+
 		RSAKey m1 = (RSAKey) matches.get(0);
 		assertEquals(RSA_JWK_1.getPublicExponent(), m1.getPublicExponent());
 		assertEquals(RSA_JWK_1.getModulus(), m1.getModulus());
 		assertEquals("1", m1.getKeyID());
-		
+
 		assertEquals(1, matches.size());
-		
-		assertNull("Cache must not be updated with failover JWK set", jwkSetSource.getCachedJWKSet());
 	}
 
-
-	@Test
-	public void testResolveDefaults() {
-		
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT, RemoteJWKSet.resolveDefaultHTTPConnectTimeout());
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT, RemoteJWKSet.resolveDefaultHTTPReadTimeout());
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT, RemoteJWKSet.resolveDefaultHTTPSizeLimit());
-	}
-
-
-	@Test
-	public void testResolveDefaults_systemPropertyOverride() {
-		
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpConnectTimeout", "250");
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpReadTimeout", "100");
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpSizeLimit", "10000");
-		
-		assertEquals(250, RemoteJWKSet.resolveDefaultHTTPConnectTimeout());
-		assertEquals(100, RemoteJWKSet.resolveDefaultHTTPReadTimeout());
-		assertEquals(10_000, RemoteJWKSet.resolveDefaultHTTPSizeLimit());
-	}
-
-
-	@Test
-	public void testDefaultsSetBySystemProperties_readTimeout()
-		throws Exception {
-
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpConnectTimeout", "250");
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpReadTimeout", "100");
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpSizeLimit", "10000");
-		
-		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
-
-		onRequest().respond().withDelay(350, TimeUnit.MILLISECONDS);
-
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
-		
-		assertEquals(250, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getConnectTimeout());
-		assertEquals(100, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getReadTimeout());
-		assertEquals(10_000, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getSizeLimit());
-
-		try {
-			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
-			fail();
-		} catch (RemoteKeySourceException e) {
-			assertEquals("Couldn't retrieve remote JWK set: Read timed out", e.getMessage());
-			assertTrue(e.getCause() instanceof SocketTimeoutException);
-			assertEquals("Read timed out", e.getCause().getMessage());
-		}
-	}
-
-
-	@Test
-	public void testDefaultsSetBySystemProperties_ignoreNumberFormatExceptions()
-		throws Exception {
-
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpConnectTimeout", "aaa");
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpReadTimeout", "bbb");
-		System.setProperty("com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpSizeLimit", "ccc");
-		
-		URL jwkSetURL = new URL("https://example.com/jwks.json");
-
-		RemoteJWKSet<?> jwkSetSource = new RemoteJWKSet<>(jwkSetURL);
-		
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getConnectTimeout());
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getReadTimeout());
-		assertEquals(RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT, ((DefaultResourceRetriever)jwkSetSource.getResourceRetriever()).getSizeLimit());
-	}
-	
-	
 	@Test
 	public void testCacheUpdateIsOnlyExecutedOnce()
 		throws Exception {
@@ -586,7 +466,6 @@ public class RemoteJWKSetTest {
 		final CountDownLatch latch = new CountDownLatch(numberOfThreads);
 		
 		final URL jwkSetURL = new URL("http://localhost/jwks.json");
-		DefaultJWKSetCache cache = new DefaultJWKSetCache();
 		final AtomicInteger invocationCounter = new AtomicInteger(0);
 		ResourceRetriever retriever = new ResourceRetriever() {
 			@Override
@@ -596,7 +475,7 @@ public class RemoteJWKSetTest {
 				return new Resource(content, "application/json");
 			}
 		};
-		final RemoteJWKSet<SecurityContext> jwkSetSource = new RemoteJWKSet<>(jwkSetURL, retriever, cache);
+		final JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL, retriever).build();
 		
 		ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 		List<Future<List<JWK>>> futures = new ArrayList<>();
@@ -610,10 +489,10 @@ public class RemoteJWKSetTest {
 						latch.countDown();
 						latch.await(1, TimeUnit.MINUTES);
 						return jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
-						
-					} catch (RemoteKeySourceException e) {
+
+					} catch (KeySourceException e) {
 						throw new RuntimeException(e);
-						
+
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						throw new RuntimeException(e);
@@ -636,10 +515,12 @@ public class RemoteJWKSetTest {
 		assertEquals("Retriever must be called exactly once", 1, invocationCounter.intValue());
 	}
 	
-	
 	@Test
+	@Deprecated
 	public void testCacheRefreshIfKeyIsNotFoundIsOnlyExecutedOnce()
 		throws Exception {
+		
+		// this is not a proper test for concurrency, kept because of a corresponding test for RemoteJWKSet.
 		
 		final RSAKey rsaJWKOld = new RSAKeyGenerator(2048)
 			.keyID("oldKeyID")
@@ -652,34 +533,34 @@ public class RemoteJWKSetTest {
 		final JWKSet jwkSetOld = new JWKSet(Collections.singletonList((JWK) rsaJWKOld));
 		final JWKSet jwkSetNew = new JWKSet(Collections.singletonList((JWK) rsaJWKNew));
 		
-		int numberOfThreads = 20;
+		int numberOfThreads = Runtime.getRuntime().availableProcessors() * 10;
 		final CountDownLatch latch = new CountDownLatch(numberOfThreads);
 		
-		final URL jwkSetURL = new URL("http://localhost/jwks.json");
-		
-		DefaultJWKSetCache cache = new DefaultJWKSetCache();
-		cache.put(jwkSetOld);
-		
 		final AtomicInteger invocationCounter = new AtomicInteger(0);
-		
-		ResourceRetriever retriever = new ResourceRetriever() {
-			
+
+		MutableJWKSetProvider provider = new MutableJWKSetProvider() {
 			@Override
-			public Resource retrieveResource(URL url) throws IOException {
+			public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 				invocationCounter.incrementAndGet();
-				final String content = JSONObjectUtils.toJSONString(jwkSetNew.toJSONObject(true));
-				return new Resource(content, "application/json");
+				return super.getJWKSet(time, forceUpdate);
 			}
-			
 		};
 		
-		final RemoteJWKSet<SecurityContext> jwkSetSource = new RemoteJWKSet<>(jwkSetURL, retriever, cache);
+		provider.setSet(jwkSetOld);
+		
+		final JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(provider).rateLimited(false).build();
+
+		// fill cache with old set
+		assertNotNull(jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID(rsaJWKOld.getKeyID()).build()), null));
+		assertEquals("Retriever must be called exactly once", 1, invocationCounter.intValue());
+
+		provider.setSet(jwkSetNew);
 		
 		ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 		List<Future<List<JWK>>> futures = new ArrayList<>();
-		
+
 		for (int i = 0; i < numberOfThreads; i++) {
-			
+
 			Future<List<JWK>> future = executorService.submit(new Callable<List<JWK>>() {
 				@Override
 				public List<JWK> call() {
@@ -688,9 +569,9 @@ public class RemoteJWKSetTest {
 						latch.countDown();
 						latch.await(1, TimeUnit.MINUTES);
 						return jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID(rsaJWKNew.getKeyID()).build()), null);
-					} catch (RemoteKeySourceException e) {
+					} catch (KeySourceException e) {
 						throw new RuntimeException(e);
-						
+
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						throw new RuntimeException(e);
@@ -700,9 +581,7 @@ public class RemoteJWKSetTest {
 			
 			futures.add(future);
 		}
-		
-		
-		
+
 		for (Future<List<JWK>> future : futures) {
 			List<JWK> result = future.get(1, TimeUnit.MINUTES);
 			assertEquals( 1, result.size());
@@ -713,6 +592,6 @@ public class RemoteJWKSetTest {
 		executorService.shutdown();
 		executorService.awaitTermination(1, TimeUnit.SECONDS);
 		
-		assertEquals("Retriever must be called exactly once", 1, invocationCounter.intValue());
+		assertEquals("Retriever must be called exactly twice", 2, invocationCounter.intValue());
 	}
 }

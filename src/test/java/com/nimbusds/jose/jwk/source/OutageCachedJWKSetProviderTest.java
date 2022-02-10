@@ -25,6 +25,8 @@ import java.util.Arrays;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,31 +43,31 @@ public class OutageCachedJWKSetProviderTest extends AbstractDelegateProviderTest
 
 	@Test
 	public void testShouldUseDelegate() throws Exception {
-		when(delegate.getJWKSet(false)).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(false), jwks);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
 	}
 
 	@Test
 	public void testShouldUseDelegateWhenCached() throws Exception {
 		JWKSet last = new JWKSet(Arrays.asList(jwk, jwk));
 
-		when(delegate.getJWKSet(false)).thenReturn(jwks).thenReturn(last);
-		assertEquals(provider.getJWKSet(false), jwks);
-		assertEquals(provider.getJWKSet(false), last);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks).thenReturn(last);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), last);
 	}
 
 	@Test
 	public void testShouldUseCacheWhenDelegateSigningKeyUnavailable() throws Exception {
-		when(delegate.getJWKSet(false)).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
-		provider.getJWKSet(false);
-		assertEquals(provider.getJWKSet(false), jwks);
-		verify(delegate, times(2)).getJWKSet(false);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
+		provider.getJWKSet(System.currentTimeMillis(), false);
+		assertEquals(provider.getJWKSet(anyLong(), eq(false)), jwks);
+		verify(delegate, times(2)).getJWKSet(anyLong(), eq(false));
 	}
 
 	@Test
 	public void testShouldNotUseExpiredCacheWhenDelegateSigningKeyUnavailable() throws Exception {
-		when(delegate.getJWKSet(false)).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
-		provider.getJWKSet(false);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
+		provider.getJWKSet(System.currentTimeMillis(), false);
 
 		try {
 			provider.getJWKSet(provider.getExpires(System.currentTimeMillis() + 1), false);

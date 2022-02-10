@@ -25,6 +25,8 @@ import org.junit.Before;
 
 import java.util.Arrays;
 
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -49,7 +51,7 @@ public abstract class AbstractDelegateProviderTest {
 		when(jwk.getKeyID()).thenReturn(KID);
 		jwks = new JWKSet(Arrays.asList(jwk));
 
-		when(delegate.getJWKSet(false)).thenReturn(jwks);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
 	}
 	
 	protected JWKSourceBuilder builder() {

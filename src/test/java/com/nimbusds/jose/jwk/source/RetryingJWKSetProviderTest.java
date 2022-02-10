@@ -22,6 +22,8 @@ import org.junit.Test;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,29 +40,29 @@ public class RetryingJWKSetProviderTest extends AbstractDelegateProviderTest {
 
 	@Test
 	public void testShouldReturnListOnSuccess() throws Exception {
-		when(delegate.getJWKSet(false)).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(false), jwks);
-		verify(delegate, times(1)).getJWKSet(false);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
+		verify(delegate, times(1)).getJWKSet(anyLong(), eq(false));
 	}
 
 	@Test
 	public void testShouldRetryWhenUnavailable() throws Exception {
-		when(delegate.getJWKSet(false)).thenThrow(new JWKSetUnavailableException("TEST!", null)).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(false), jwks);
-		verify(delegate, times(2)).getJWKSet(false);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new JWKSetUnavailableException("TEST!", null)).thenReturn(jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
+		verify(delegate, times(2)).getJWKSet(anyLong(), eq(false));
 	}
 
 	@Test
 	public void testShouldNotRetryMoreThanOnce() throws Exception {
-		when(delegate.getJWKSet(false)).thenThrow(new JWKSetUnavailableException("TEST!", null));
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new JWKSetUnavailableException("TEST!", null));
 
 		try {
-			provider.getJWKSet(false);
+			provider.getJWKSet(System.currentTimeMillis(), false);
 			fail();
 		} catch(JWKSetUnavailableException e) {
 			// pass
 		} finally {
-			verify(delegate, times(2)).getJWKSet(false);
+			verify(delegate, times(2)).getJWKSet(anyLong(), eq(false));
 		}
 	}
 

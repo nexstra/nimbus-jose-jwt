@@ -116,8 +116,8 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 	@Override
 	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 		JWKSetCacheItem cache = this.cache;
-		if (forceUpdate || cache == null || !cache.isValid(time)) {
-			return super.getJwksBlocking(time, cache).getValue();
+		if (cache == null || (forceUpdate && cache.getTimestamp() < time) || !cache.isValid(time)) {
+			return super.getJwksBlocking(time).getValue();
 		}
 		preemptiveRefresh(time, cache, false);
 
@@ -216,7 +216,7 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 				public void run() {
 					try {
 						LOGGER.info("Perform preemptive JWKs refresh");
-						PreemptiveCachedJWKSetProvider.this.getJwksBlocking(time, cache);
+						PreemptiveCachedJWKSetProvider.this.getJwksBlocking(time);
 
 						// so next time this method is invoked, it'll be with the updated cache item expiry time
 					} catch (Throwable e) {

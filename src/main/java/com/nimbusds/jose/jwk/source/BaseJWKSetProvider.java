@@ -45,4 +45,5 @@ public abstract class BaseJWKSetProvider implements JWKSetProvider {
 	public boolean supportsHealth() {
 		return provider.supportsHealth();
 	}
+	
 }

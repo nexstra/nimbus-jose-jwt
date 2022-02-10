@@ -18,13 +18,12 @@
 package com.nimbusds.jose.jwk.source;
 
 
+import java.util.List;
+
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.proc.SecurityContext;
-
-import java.io.Closeable;
-import java.util.List;
 
 
 /**
@@ -36,13 +35,14 @@ import java.util.List;
  * @author Vladimir Dzhuvinov
  * @version 2016-06-21
  */
-public interface JWKSource<C extends SecurityContext> extends Closeable {
+public interface JWKSource <C extends SecurityContext> {
+	
 
 	/**
 	 * Retrieves a list of JWKs matching the specified selector.
 	 *
 	 * @param jwkSelector A JWK selector. Must not be {@code null}.
-	 * @param context Optional context, {@code null} if not required.
+	 * @param context     Optional context, {@code null} if not required.
 	 *
 	 * @return The matching JWKs, empty list if no matches were found.
 	 *

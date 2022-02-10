@@ -59,12 +59,10 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 	}
 
 	@Override
-	public JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException {
-		long time = System.currentTimeMillis();
-
+	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 		JWKSet list = null;
 		try {
-			list = provider.getJWKSet(forceUpdate);
+			list = provider.getJWKSet(time, forceUpdate);
 		} finally {
 			setProviderStatus(new JWKSetHealth(time, list != null));
 		}
@@ -78,6 +76,10 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 
 	@Override
 	public JWKSetHealth getHealth(boolean refresh) {
+		return getHealth(System.currentTimeMillis(), refresh);
+	}
+
+	protected JWKSetHealth getHealth(long time, boolean refresh) {
 		if(!refresh) {
 			JWKSetHealth threadSafeStatus = this.status; // defensive copy
 			if(threadSafeStatus != null) {
@@ -95,13 +97,12 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 		// get the JWKs from the top level provider (without forcing a refresh)
 		// so that the cache is refreshed if necessary, so an unhealthy status
 		// can turn to a healthy status just by checking the health
-
 		JWKSetHealth threadSafeStatus = this.providerStatus; // defensive copy
 		if (threadSafeStatus == null || !threadSafeStatus.isSuccess()) {
 			// get a fresh status
 			JWKSet jwks = null;
 			try {
-				jwks = refreshProvider.getJWKSet(false);
+				jwks = refreshProvider.getJWKSet(time, false);
 			} catch (Exception e) {
 				// ignore
 				LOGGER.log(Level.INFO, "Exception refreshing health status.", e);

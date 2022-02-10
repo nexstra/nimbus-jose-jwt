@@ -18,23 +18,19 @@
 package com.nimbusds.jose.proc;
 
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKMatcher;
-import com.nimbusds.jose.jwk.JWKSelector;
-import com.nimbusds.jose.jwk.KeyType;
-import com.nimbusds.jose.jwk.KeyUse;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
-
 import java.net.URL;
 import java.security.Key;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.KeySourceException;
+import com.nimbusds.jose.jwk.*;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 
 /**
  * A {@link JWSKeySelector} that expects an algorithm from a specified
@@ -96,9 +92,10 @@ public class JWSAlgorithmFamilyJWSKeySelector<C extends SecurityContext> extends
 	public static <C extends SecurityContext> JWSAlgorithmFamilyJWSKeySelector<C> fromJWKSetURL(final URL jwkSetURL)
 		throws KeySourceException {
 
-		JWKSourceBuilder<C> builder = JWKSourceBuilder.newBuilder(jwkSetURL);
-		return fromJWKSource(builder.build());
+		JWKSource<C> jwkSource = new RemoteJWKSet<>(jwkSetURL);
+		return fromJWKSource(jwkSource);
 	}
+	
 
 	/**
 	 * Queries the given {@link JWKSource} for keys, creating a

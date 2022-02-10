@@ -18,17 +18,21 @@
 package com.nimbusds.jwt.proc;
 
 
-import com.nimbusds.jose.EncryptionMethod;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWEAlgorithm;
-import com.nimbusds.jose.JWEHeader;
-import com.nimbusds.jose.JWEObject;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.Payload;
+import java.net.URL;
+import java.security.*;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.KeySpec;
+import java.text.ParseException;
+import java.util.*;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+
+import junit.framework.TestCase;
+
+import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.AESEncrypter;
 import com.nimbusds.jose.crypto.DirectEncrypter;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -43,47 +47,10 @@ import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.jwk.source.JWKSourceBuilder;
-import com.nimbusds.jose.proc.BadJOSEException;
-import com.nimbusds.jose.proc.BadJWSException;
-import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
-import com.nimbusds.jose.proc.JWEDecryptionKeySelector;
-import com.nimbusds.jose.proc.JWEKeySelector;
-import com.nimbusds.jose.proc.JWSKeySelector;
-import com.nimbusds.jose.proc.JWSVerificationKeySelector;
-import com.nimbusds.jose.proc.SecurityContext;
-import com.nimbusds.jose.proc.SimpleSecurityContext;
-import com.nimbusds.jose.proc.SingleKeyJWSKeySelector;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.*;
 import com.nimbusds.jose.util.Base64URL;
-import com.nimbusds.jwt.EncryptedJWT;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTClaimNames;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.JWTParser;
-import com.nimbusds.jwt.PlainJWT;
-import com.nimbusds.jwt.SignedJWT;
-import junit.framework.TestCase;
-
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
-import java.net.URL;
-import java.security.Key;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.SecureRandom;
-import java.security.Security;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.KeySpec;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
+import com.nimbusds.jwt.*;
 
 
 /**
@@ -888,7 +855,7 @@ public class DefaultJWTProcessorTest extends TestCase {
 		// OAuth 2.0 server's JWK set, published at a well-known URL. The RemoteJWKSet
 		// object caches the retrieved keys to speed up subsequent look-ups and can
 		// also handle key-rollover
-		JWKSource<SecurityContext> keySource = JWKSourceBuilder.newBuilder(new URL("https://demo.c2id.com/c2id/jwks.json")).build();
+		JWKSource<SecurityContext> keySource = new RemoteJWKSet<>(new URL("https://demo.c2id.com/c2id/jwks.json"));
 
 		// The expected JWS algorithm of the access tokens (agreed out-of-band)
 		JWSAlgorithm expectedJWSAlg = JWSAlgorithm.RS256;
@@ -968,7 +935,7 @@ public class DefaultJWTProcessorTest extends TestCase {
 		// OAuth 2.0 server's JWK set, published at a well-known URL. The RemoteJWKSet
 		// object caches the retrieved keys to speed up subsequent look-ups and can
 		// also gracefully handle key-rollover
-		JWKSource<SecurityContext> keySource = JWKSourceBuilder.newBuilder(new URL(jwkUri)).build();
+		JWKSource<SecurityContext> keySource = new RemoteJWKSet<>(new URL(jwkUri));
 
 		// The expected JWS algorithm of the access tokens (agreed out-of-band)
 		JWSAlgorithm expectedJWSAlg = JWSAlgorithm.RS256;

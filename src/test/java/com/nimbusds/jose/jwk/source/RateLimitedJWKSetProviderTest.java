@@ -22,6 +22,8 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,28 +31,51 @@ public class RateLimitedJWKSetProviderTest extends AbstractDelegateProviderTest 
 
 	private RateLimitedJWKSetProvider provider;
 
+	private int duration = 30 * 1000;
+	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RateLimitedJWKSetProvider(delegate, 30 * 1000);
+		provider = new RateLimitedJWKSetProvider(delegate, duration);
 	}
 
 	@Test
 	public void testShouldFailToGetWhenBucketIsEmpty() throws Exception {
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis() + 1, false), jwks);
 		try {
-			provider.getJWKSet(false, Long.MIN_VALUE);
+			provider.getJWKSet(System.currentTimeMillis(), false);
 			fail();
 		} catch(RateLimitReachedException e) {
 			// pass
 		}
 	}
+	
+	@Test
+	public void testRefillBucket() throws Exception {
+		long time = System.currentTimeMillis();
+		
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
+		assertEquals(provider.getJWKSet(time, false), jwks);
+		assertEquals(provider.getJWKSet(time + 1, false), jwks);
+		try {
+			provider.getJWKSet(time + 2, false);
+			fail();
+		} catch(RateLimitReachedException e) {
+			// pass
+		}
+		
+		assertEquals(provider.getJWKSet(time + duration, false), jwks);
+		
+	}
 
 	@Test
 	public void testShouldGetWhenBucketHasTokensAvailable() throws Exception {
-		when(delegate.getJWKSet(false)).thenReturn(jwks);
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
 
-		assertEquals(provider.getJWKSet(false), jwks);
-		verify(delegate).getJWKSet(false);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
+		verify(delegate).getJWKSet(anyLong(), eq(false));
 	}
 
 }

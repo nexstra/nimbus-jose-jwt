@@ -22,6 +22,7 @@ import com.nimbusds.jose.util.DefaultResourceRetriever;
 import com.nimbusds.jose.util.ResourceRetriever;
 
 import java.net.URL;
+import java.util.Objects;
 
 /**
  * JwkProvider builder
@@ -32,97 +33,29 @@ import java.net.URL;
 
 public class JWKSourceBuilder<C extends SecurityContext> {
 
-	/**
-	 * The default HTTP connect timeout for JWK set retrieval, in
-	 * milliseconds. Set to 500 milliseconds.
-	 */
-	public static final int DEFAULT_HTTP_CONNECT_TIMEOUT = 500;
-
-	/**
-	 * The default HTTP read timeout for JWK set retrieval, in
-	 * milliseconds. Set to 500 milliseconds.
-	 */
-	public static final int DEFAULT_HTTP_READ_TIMEOUT = 500;
-
-	/**
-	 * The default HTTP entity size limit for JWK set retrieval, in bytes.
-	 * Set to 50 KBytes.
-	 */
-	public static final int DEFAULT_HTTP_SIZE_LIMIT = 50 * 1024;
-
-	/**
-	 * Resolves the default HTTP connect timeout for JWK set retrieval, in
-	 * milliseconds.
-	 *
-	 * @return The {@link #DEFAULT_HTTP_CONNECT_TIMEOUT static constant},
-	 *		 overridden by setting the
-	 *		 {@code com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpConnectTimeout}
-	 *		 Java system property.
-	 */
-	public static int resolveDefaultHTTPConnectTimeout() {
-		return resolveDefault(RemoteJWKSet.class.getName() + ".defaultHttpConnectTimeout", DEFAULT_HTTP_CONNECT_TIMEOUT);
-	}
-
-	/**
-	 * Resolves the default HTTP read timeout for JWK set retrieval, in
-	 * milliseconds.
-	 *
-	 * @return The {@link #DEFAULT_HTTP_READ_TIMEOUT static constant},
-	 *		 overridden by setting the
-	 *		 {@code com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpReadTimeout}
-	 *		 Java system property.
-	 */
-	public static int resolveDefaultHTTPReadTimeout() {
-		return resolveDefault(RemoteJWKSet.class.getName() + ".defaultHttpReadTimeout", DEFAULT_HTTP_READ_TIMEOUT);
-	}
-
-	/**
-	 * Resolves default HTTP entity size limit for JWK set retrieval, in
-	 * bytes.
-	 *
-	 * @return The {@link #DEFAULT_HTTP_SIZE_LIMIT static constant},
-	 *		 overridden by setting the
-	 *		 {@code com.nimbusds.jose.jwk.source.RemoteJWKSet.defaultHttpSizeLimit}
-	 *		 Java system property.
-	 */
-	public static int resolveDefaultHTTPSizeLimit() {
-		return resolveDefault(RemoteJWKSet.class.getName() + ".defaultHttpSizeLimit", DEFAULT_HTTP_SIZE_LIMIT);
-	}
-
-	private static int resolveDefault(final String sysPropertyName, final int defaultValue) {
-
-		String value = System.getProperty(sysPropertyName);
-
-		if (value == null) {
-			return defaultValue;
-		}
-
-		try {
-			return Integer.parseInt(value);
-		} catch (NumberFormatException e) {
-			// Illegal value
-			return defaultValue;
-		}
-	}
-
 	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url, ResourceRetriever resourceRetriever) {
 		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetProvider(url, resourceRetriever));
 	}
 
-	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url, final int connectTimeout, final int readTimeout, final int sizeLimit) {
-		DefaultResourceRetriever jwkSetRetriever = new DefaultResourceRetriever(
-				connectTimeout,
-				readTimeout,
-				sizeLimit);
-		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetProvider(url, jwkSetRetriever));
-	}
-
 	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url) {
-		DefaultResourceRetriever jwkSetRetriever = new DefaultResourceRetriever(
-				resolveDefaultHTTPConnectTimeout(),
-				resolveDefaultHTTPReadTimeout(),
-				resolveDefaultHTTPSizeLimit());
-		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetProvider(url, jwkSetRetriever));
+		JWKSetProvider jwkSetProvider;
+		
+		String protocol = url.getProtocol();
+		if(Objects.equals(protocol, "file")) {
+			jwkSetProvider = new LocalUrlJWKSetProvider(url);
+		} else {
+			DefaultResourceRetriever jwkSetRetriever = new DefaultResourceRetriever(
+					RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT,
+					RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT,
+					RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT);
+			
+			jwkSetProvider = new ResourceRetrieverJWKSetProvider(url, jwkSetRetriever);
+		}
+		return new JWKSourceBuilder<>(jwkSetProvider);
+	}
+	
+	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(JWKSetProvider provider) {
+		return new JWKSourceBuilder<>(provider);
 	}
 
 	// root provider
@@ -138,8 +71,8 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	protected boolean preemptiveRefreshEager = false;
 
 	// rate limiting
-	// a single request for every refill duration
-	// (retry on network error does not count)
+	// Max two requests for every refill duration
+	// (retry on network error will not count against this)
 	protected boolean rateLimited = true;
 	protected long refillDuration = 30 * 1000;
 
@@ -148,7 +81,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 
 	// outage
 	protected boolean outageCached = false;
-	protected long outageCachedDuration = cacheDuration * 10;
+	protected long outageCachedDuration = -1L;
 
 	// health indicator support
 	protected boolean health = true;
@@ -174,7 +107,6 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	 */
 	public JWKSourceBuilder<C> cached(boolean cached) {
 		this.cached = cached;
-		this.preemptiveRefresh = false;
 		return this;
 	}
 
@@ -193,6 +125,22 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.cacheRefreshTimeoutDuration = refreshExpires;
 		return this;
 	}
+
+	/**
+	 * Toggle the cache of Jwk. By default the provider will use cache.
+	 *
+	 * @param cached if the provider should cache jwks
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> cachedForever() {
+		this.cached = true;
+		this.cacheDuration = Long.MAX_VALUE;
+		
+		// preemptive will never be necessary
+		this.preemptiveRefresh = false;
+		return this;
+	}
+
 	
 	/**
 	 * Enable the preemptive cache. This also enables caching.
@@ -291,7 +239,21 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	}
 
 	/**
-	 * Enable the shadow cache specifying size and expire time.
+	 * Enable never-expiring outage cache. In other words, as long as the
+	 * JWKs cannot be transferred / read from the source, typically 
+	 * due to network issues or service malfunction, the last certificates are to be used.
+	 *
+	 * @param outageCached if the outage cache is enabled
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> outageCachedForever() {
+		this.outageCached = true;
+		this.outageCachedDuration = Long.MAX_VALUE;
+		return this;
+	}
+
+	/**
+	 * Enable the outage cache specifying size and expire time.
 	 *
 	 * @param duration amount of time the jwk will be cached
 	 * @return the builder
@@ -316,10 +278,31 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 			throw new IllegalStateException("Premptive cache refresh configured without caching");
 		}
 
+		if(cached && rateLimited && cacheDuration <= refillDuration) {
+			throw new IllegalStateException("Ratelimit refill duration must be less than cache duration");
+		}
+		
+		if(cached && outageCached && cacheDuration == Long.MAX_VALUE && outageCachedDuration == Long.MAX_VALUE) {
+			throw new IllegalStateException("No outage protection is necessary if cache never expires");
+		}
+
+		if(cached && preemptiveRefresh && cacheDuration == Long.MAX_VALUE) {
+			throw new IllegalStateException("No preemptie cache refresh is necessary if cache never expires");
+		}
+
 		if (retrying) {
 			provider = new RetryingJWKSetProvider(provider);
 		}
+		
 		if (outageCached) {
+			if(outageCachedDuration == -1L) {
+				// TODO what is a sane default value here
+				if(cached) {
+					outageCachedDuration = cacheDuration * 10;
+				} else {
+					outageCachedDuration = 5 * 60 * 1000 * 10; 
+				}
+			}
 			provider = new OutageCachedJWKSetProvider(provider, outageCachedDuration);
 		}
 
@@ -341,7 +324,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 			healthProvider.setRefreshProvider(provider);
 		}
 
-		RemoteJWKSet<C> jwkSource = new RemoteJWKSet<>(provider);
+		JWKSource<C> jwkSource = new UrlJWKSource<>(provider);
 		if(failover != null) {
 			return new FailoverJWKSource<>(jwkSource, failover);
 		}

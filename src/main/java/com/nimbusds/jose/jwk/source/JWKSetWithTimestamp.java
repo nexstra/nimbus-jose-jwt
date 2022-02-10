@@ -1,7 +1,7 @@
 /*
  * nimbus-jose-jwt
  *
- * Copyright 2012-2016, Connect2id Ltd.
+ * Copyright 2012-2016, Connect2id Ltd and contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -18,44 +18,57 @@
 package com.nimbusds.jose.jwk.source;
 
 
-import java.util.List;
+import java.util.Date;
 
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSelector;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.proc.SecurityContext;
 import net.jcip.annotations.Immutable;
+
+import com.nimbusds.jose.jwk.JWKSet;
 
 
 /**
- * JSON Web Key (JWK) source backed by an immutable JWK set.
+ * JSON Web Key (JWK) set with timestamp.
  *
  * @author Vladimir Dzhuvinov
- * @version 2016-04-10
+ * @version 2020-12-27
+ * @deprecated see {@linkplain RemoteJWKSet}.
  */
+@Deprecated
 @Immutable
-public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C> {
+public final class JWKSetWithTimestamp {
 
 
-	/**
-	 * The JWK set.
-	 */
 	private final JWKSet jwkSet;
-
-
+	
+	
+	private final Date timestamp;
+	
+	
 	/**
-	 * Creates a new JWK source backed by an immutable JWK set.
-	 *
-	 * @param jwkSet The JWK set. Must not be {@code null}.
+	 * Creates a new JWK set with a timestamp set to now.
 	 */
-	public ImmutableJWKSet(final JWKSet jwkSet) {
+	public JWKSetWithTimestamp(final JWKSet jwkSet) {
+		this(jwkSet, new Date());
+	}
+	
+	
+	/**
+	 * Creates a new JWK set with timestamp.
+	 *
+	 * @param jwkSet    The JWK set. Must not be {@code null}.
+	 * @param timestamp The timestamp date. Must not be {@code null}.
+	 */
+	public JWKSetWithTimestamp(final JWKSet jwkSet, final Date timestamp) {
 		if (jwkSet == null) {
 			throw new IllegalArgumentException("The JWK set must not be null");
 		}
 		this.jwkSet = jwkSet;
+		if (timestamp == null) {
+			throw new IllegalArgumentException("The timestamp must not null");
+		}
+		this.timestamp = timestamp;
 	}
-
-
+	
+	
 	/**
 	 * Returns the JWK set.
 	 *
@@ -64,14 +77,14 @@ public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C> 
 	public JWKSet getJWKSet() {
 		return jwkSet;
 	}
-
-
+	
+	
 	/**
-	 * {@inheritDoc} The security context is ignored.
+	 * Returns the timestamp date.
+	 *
+	 * @return The timestamp date.
 	 */
-	@Override
-	public List<JWK> get(final JWKSelector jwkSelector, final C context) {
-
-		return jwkSelector.select(jwkSet);
+	public Date getDate() {
+		return timestamp;
 	}
 }

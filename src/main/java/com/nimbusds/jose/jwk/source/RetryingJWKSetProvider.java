@@ -39,14 +39,14 @@ public class RetryingJWKSetProvider extends BaseJWKSetProvider {
 	}
 
 	@Override
-	public JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 		try {
-			return provider.getJWKSet(forceUpdate);
+			return provider.getJWKSet(time, forceUpdate);
 		} catch (JWKSetUnavailableException e) {
 			// assume transient network issue, retry once
 			LOGGER.log(Level.WARNING, "Received exception getting JWKs, retrying once", e);
 
-			return provider.getJWKSet(forceUpdate);
+			return provider.getJWKSet(time, forceUpdate);
 		}
 	}
 

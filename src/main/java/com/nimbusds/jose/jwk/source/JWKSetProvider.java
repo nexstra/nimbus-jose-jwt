@@ -30,10 +30,12 @@ public interface JWKSetProvider extends JWKSetHealthProvider, Closeable {
 	/**
 	 * Returns a list of Jwk.
 	 *
-	 * @param forceUpdate if true, bypass existing caches and get new values
+	 * @param time current time in milliseconds since 1970. 
+	 * @param forceUpdate if true, bypass existing caches if 
+	 *        the current cache is older than the passed time parameter 
 	 * @return a set of JWK
 	 * @throws KeySourceException if no list can be retrieved
 	 */
-	JWKSet getJWKSet(boolean forceUpdate) throws KeySourceException;
+	JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException;
 
 }

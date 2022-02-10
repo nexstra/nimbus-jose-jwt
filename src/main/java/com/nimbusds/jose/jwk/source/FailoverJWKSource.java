@@ -23,13 +23,15 @@ import com.nimbusds.jose.RemoteKeySourceException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.IOUtils;
+
 import net.jcip.annotations.ThreadSafe;
 
-import java.io.IOException;
+import java.io.Closeable;
 import java.util.List;
 
 @ThreadSafe
-public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthProvider {
+public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthProvider, Closeable {
 
 	private final JWKSource<C> failoverJWKSource;
 	private final JWKSource<C> jwkSource;
@@ -100,18 +102,14 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 
 	@Override
 	public void close() {
-		try {
-			jwkSource.close();
-		} catch (IOException e) {
-			// ignore
+		if(jwkSource instanceof Closeable) {
+			IOUtils.closeSilently((Closeable)jwkSource);
 		}
-		try {
-			failoverJWKSource.close();
-		} catch (IOException e) {
-			// ignore
+		if(failoverJWKSource instanceof Closeable) {
+			IOUtils.closeSilently((Closeable)failoverJWKSource);
 		}
-
 	}
+
 
 	@Override
 	public JWKSetHealth getHealth(boolean refresh) {
