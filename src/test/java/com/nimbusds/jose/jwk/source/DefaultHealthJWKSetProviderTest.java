@@ -79,7 +79,7 @@ public class DefaultHealthJWKSetProviderTest extends AbstractDelegateProviderTes
 
 	@Test
 	public void testShouldReturnGoodHealthIfJwksCouldBeRefreshedAfterBadStatus() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException());
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test"));
 
 		// attempt to get jwks
 		try {
@@ -101,8 +101,8 @@ public class DefaultHealthJWKSetProviderTest extends AbstractDelegateProviderTes
 
 	@Test
 	public void testShouldReturnBadHealthIfJwksCouldNotBeRefreshedAfterBadStatus() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException());
-		when(refreshProvider.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException());
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test"));
+		when(refreshProvider.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test"));
 
 		// attempt to get jwks
 		try {
@@ -123,7 +123,7 @@ public class DefaultHealthJWKSetProviderTest extends AbstractDelegateProviderTes
 
 	@Test
 	public void testShouldRecoverFromBadHealth() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException()) // fail
+		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test")) // fail
 				.thenReturn(jwks); // recover
 
 		// attempt to get access-token

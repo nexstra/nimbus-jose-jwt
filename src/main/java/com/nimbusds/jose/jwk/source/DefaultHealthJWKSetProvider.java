@@ -28,11 +28,11 @@ import java.util.logging.Logger;
  * Default 'lazy' implementation of health provider. <br>
  * <br>
  * Returns bad health if<br>
- * - a previous invocation has failed, and a new invocation (by the indicator, from the top level) fails as well. <br>
+ * - a previous invocation has failed, and a new invocation (from the top level) fails as well. <br>
  * <br>
  * Returns good health if<br>
  * - a previous invocation was successful, or<br>
- * - a previous invocation has failed, but a new invocation (by the the indicator, from the top level) is successful.<br>
+ * - a previous invocation has failed, but a new invocation (from the top level) is successful.<br>
  * <br>
  * Calls to this health indicator does not trigger a (remote) refresh if the last call to the
  * underlying provider was successful. 
@@ -59,12 +59,12 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		JWKSet list = null;
 		try {
-			list = provider.getJWKSet(time, forceUpdate);
+			list = provider.getJWKSet(currentTime, forceUpdate);
 		} finally {
-			setProviderStatus(new JWKSetHealth(time, list != null));
+			setProviderStatus(new JWKSetHealth(currentTime, list != null));
 		}
 
 		return list;
@@ -79,7 +79,7 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 		return getHealth(System.currentTimeMillis(), refresh);
 	}
 
-	protected JWKSetHealth getHealth(long time, boolean refresh) {
+	protected JWKSetHealth getHealth(long currentTime, boolean refresh) {
 		if(!refresh) {
 			JWKSetHealth threadSafeStatus = this.status; // defensive copy
 			if(threadSafeStatus != null) {
@@ -102,7 +102,7 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 			// get a fresh status
 			JWKSet jwks = null;
 			try {
-				jwks = refreshProvider.getJWKSet(time, false);
+				jwks = refreshProvider.getJWKSet(currentTime, false);
 			} catch (Exception e) {
 				// ignore
 				LOGGER.log(Level.INFO, "Exception refreshing health status.", e);

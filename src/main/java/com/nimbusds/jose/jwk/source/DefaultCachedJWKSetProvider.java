@@ -19,7 +19,6 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.source.AbstractCachedJWKSetProvider.JWKSetCacheItem;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -40,7 +39,7 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	/**
 	 * Construct new instance.
 	 * 
-	 * @param provider	   Jwk provider
+	 * @param provider	     JWK provider
 	 * @param timeToLive	 cache hold time (in milliseconds)
 	 * @param refreshTimeout cache refresh timeout unit
 	 */
@@ -51,16 +50,16 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 		this.refreshTimeout = refreshTimeout;
 	}
 
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		JWKSetCacheItem cache = this.cache;
-		if (cache == null || (forceUpdate && cache.getTimestamp() < time) || !cache.isValid(time)) {
-			cache = getJwksBlocking(time);
+		if (cache == null || (forceUpdate && cache.getTimestamp() < currentTime) || !cache.isValid(currentTime)) {
+			cache = getJwksBlocking(currentTime);
 		}
 
 		return cache.getValue();
 	}
 
-	protected JWKSetCacheItem getJwksBlocking(long time) throws KeySourceException {
+	protected JWKSetCacheItem getJwksBlocking(long currentTime) throws KeySourceException {
 		// Synchronize so that the first thread to acquire the lock
 		// exclusively gets to call the underlying provider.
 		// Other (later) threads must wait until the result is ready.
@@ -78,12 +77,12 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 				try {
 					// see if anyone already refreshed the cache while we were
 					// hold getting the lock
-					if (!isCacheUpdatedSince(time)) {
+					if (!isCacheUpdatedSince(currentTime)) {
 						// Seems cache was not updated.
 						// We hold the lock, so safe to update it now
 						LOGGER.info("Perform JWK cache refresh..");
 
-						JWKSetCacheItem result = loadJWKSetFromProvider(time);
+						JWKSetCacheItem result = loadJWKSetFromProvider(currentTime);
 
 						LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting), now have " + result.getValue().size() + " JWKs");
 
@@ -104,13 +103,12 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 					try {
 						// see if anyone already refreshed the cache while we were
 						// hold getting the lock
-						if (!isCacheUpdatedSince(time)) {
+						if (!isCacheUpdatedSince(currentTime)) {
 							// Seems cache was not updated.
 							// We hold the lock, so safe to update it now
 							LOGGER.warning("JWK cache was NOT successfully refreshed while waiting, retry now (with " + lock.getQueueLength() + " waiting).." );
-							LOGGER.warning("Wanted " + time + " got " + this.cache.getTimestamp() + " " + (time - this.cache.getTimestamp()) );
 							
-							cache = loadJWKSetFromProvider(time);
+							cache = loadJWKSetFromProvider(currentTime);
 							
 							LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting)");
 						} else {
@@ -127,7 +125,7 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 				}
 			}
 
-			if (cache != null && cache.isValid(time)) {
+			if (cache != null && cache.isValid(currentTime)) {
 				return cache;
 			}
 
@@ -150,15 +148,15 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	/**
 	 * Load JWKs from wrapped provider. Guaranteed to only run for one thread at a time.
 	 *
-	 * @param time current time
+	 * @param currentTime current time
 	 * @return cache item
 	 * @throws JwksException if loading could not be performed
 	 */
 
-	protected JWKSetCacheItem loadJWKSetFromProvider(long time) throws KeySourceException {
-		JWKSet all = provider.getJWKSet(time, false);
+	protected JWKSetCacheItem loadJWKSetFromProvider(long currentTime) throws KeySourceException {
+		JWKSet all = provider.getJWKSet(currentTime, false);
 
-		JWKSetCacheItem cache = createJWKSetCacheItem(all, time);
+		JWKSetCacheItem cache = createJWKSetCacheItem(all, currentTime);
 		
 		this.cache = cache;
 		

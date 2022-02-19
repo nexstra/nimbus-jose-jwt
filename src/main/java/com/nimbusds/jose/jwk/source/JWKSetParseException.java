@@ -1,5 +1,11 @@
 package com.nimbusds.jose.jwk.source;
 
+/**
+ * 
+ * Exception for indicating that JWKs could not be parsed.
+ * 
+ */
+
 public class JWKSetParseException extends JWKSetUnavailableException {
 
 	private static final long serialVersionUID = 1L;

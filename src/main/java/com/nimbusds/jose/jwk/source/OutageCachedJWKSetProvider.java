@@ -42,13 +42,13 @@ public class OutageCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		try {
 			// cache value, if successfully refreshed by underlying provider
 
-			JWKSet all = provider.getJWKSet(time, forceUpdate);
+			JWKSet all = provider.getJWKSet(currentTime, forceUpdate);
 
-			this.cache = createJWKSetCacheItem(all, time);
+			this.cache = createJWKSetCacheItem(all, currentTime);
 
 			return all;
 		} catch (JWKSetUnavailableException e1) {
@@ -56,15 +56,15 @@ public class OutageCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 			// reuse previously stored value
 			if (!forceUpdate) {
 				JWKSetCacheItem cache = this.cache;
-				if (cache != null && cache.isValid(time)) {
-					long left = cache.getExpires() - time; // in millis
+				if (cache != null && cache.isValid(currentTime)) {
+					long left = cache.getExpires() - currentTime; // in millis
 
-					// so validation of tokens will still work, but fail as soon as this cache
-					// expires
-					// note that issuing new tokens will probably not work when this operation does
+					// So validation of tokens will still work, but fail as soon as this cache
+					// expires.
+					// Note that issuing new tokens will probably not work when this operation does
 					// not work either.
 					//
-					// logging scheme:
+					// Logging scheme:
 					// 50% time left, or less than one hour -> error
 					// 50-100% time left -> warning
 

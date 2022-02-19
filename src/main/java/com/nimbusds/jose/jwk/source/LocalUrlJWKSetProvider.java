@@ -15,28 +15,27 @@ import com.nimbusds.jose.util.StandardCharset;
  */
 
 public class LocalUrlJWKSetProvider extends AbstractResourceJWKSetProvider {
-    
-    /**
-     * Creates a provider that loads from the given URL
-     *
-     * @param url            to load the jwks
-     */
-    public LocalUrlJWKSetProvider(URL url) {
-    	super(url);
-    }
 
-    
+	/**
+	 * Creates a provider that loads from the given URL
+	 *
+	 * @param url			to load the JWKS
+	 */
+	public LocalUrlJWKSetProvider(URL url) {
+		super(url);
+	}
+
 	@Override
 	protected Resource getResource() throws JWKSetTransferException {
-        try {
+		try {
 			final URLConnection c = this.url.openConnection();
-	        try (InputStream inputStream = c.getInputStream()) {
-	           	String content = IOUtils.readInputStreamToString(inputStream, StandardCharset.UTF_8);
-	           	return new Resource(content, null);
-	        }
-        } catch(IOException e) {
-        	throw new JWKSetTransferException("Couldn't retrieve remote JWK set: " + e.getMessage(), e);
-        }
+			try (InputStream inputStream = c.getInputStream()) {
+				String content = IOUtils.readInputStreamToString(inputStream, StandardCharset.UTF_8);
+				return new Resource(content, null);
+			}
+		} catch(IOException e) {
+			throw new JWKSetTransferException("Couldn't retrieve remote JWK set: " + e.getMessage(), e);
+		}
 	}
 
 }

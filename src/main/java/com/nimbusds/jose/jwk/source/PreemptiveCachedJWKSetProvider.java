@@ -114,36 +114,36 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		JWKSetCacheItem cache = this.cache;
-		if (cache == null || (forceUpdate && cache.getTimestamp() < time) || !cache.isValid(time)) {
-			return super.getJwksBlocking(time).getValue();
+		if (cache == null || (forceUpdate && cache.getTimestamp() < currentTime) || !cache.isValid(currentTime)) {
+			return super.getJwksBlocking(currentTime).getValue();
 		}
-		preemptiveRefresh(time, cache, false);
+		preemptiveRefresh(currentTime, cache, false);
 
 		return cache.getValue();
 	}
 
 	@Override
-	protected JWKSetCacheItem loadJWKSetFromProvider(long time) throws KeySourceException {
+	protected JWKSetCacheItem loadJWKSetFromProvider(long currentTime) throws KeySourceException {
 		// note: never run by two threads at the same time
-		JWKSetCacheItem cache = super.loadJWKSetFromProvider(time);
+		JWKSetCacheItem cache = super.loadJWKSetFromProvider(currentTime);
 
 		if (scheduledExecutorService != null) {
-			schedulePreemptiveRefresh(time, cache);
+			schedulePreemptiveRefresh(currentTime, cache);
 		}
 
 		return cache;
 	}
 
-	protected void schedulePreemptiveRefresh(long time, final JWKSetCacheItem cache) {
+	protected void schedulePreemptiveRefresh(long currentTime, final JWKSetCacheItem cache) {
 		if (eagerScheduledFuture != null) {
 			eagerScheduledFuture.cancel(false);
 		}
 
 		// so we want to keep other threads from triggering preemptive refreshing
 		// subtracting the refresh timeout should be enough
-		long delay = cache.getExpires() - time - preemptiveRefresh - refreshTimeout;
+		long delay = cache.getExpires() - currentTime - preemptiveRefresh - refreshTimeout;
 		if (delay > 0) {
 			Runnable command = new Runnable() {
 

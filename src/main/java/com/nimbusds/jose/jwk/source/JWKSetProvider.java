@@ -28,14 +28,14 @@ import java.io.Closeable;
 public interface JWKSetProvider extends JWKSetHealthProvider, Closeable {
 
 	/**
-	 * Returns a list of Jwk.
+	 * Get a set of JWKs.
 	 *
-	 * @param time current time in milliseconds since 1970. 
+	 * @param currentTime current time in milliseconds since 1970. 
 	 * @param forceUpdate if true, bypass existing caches if 
-	 *        the current cache is older than the passed time parameter 
-	 * @return a set of JWK
+	 *        the current cache is older than the passed currentTime parameter 
+	 * @return a set of JWKs
 	 * @throws KeySourceException if no list can be retrieved
 	 */
-	JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException;
+	JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException;
 
 }

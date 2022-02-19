@@ -36,7 +36,7 @@ public class ThreadHelper extends Thread {
 				i++;
 			}
 		} catch (Exception e) {
-			// ignore, run rest with out locking
+			// ignore, run rest without locking
 			while (i < runnables.size()) {
 				runnables.get(i).run();
 

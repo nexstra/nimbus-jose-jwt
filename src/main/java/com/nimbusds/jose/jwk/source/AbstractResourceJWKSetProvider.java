@@ -53,24 +53,30 @@ public abstract class AbstractResourceJWKSetProvider implements JWKSetProvider {
 		}
 	}
 
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		LOGGER.info("Requesting JWKs from " + url + "..");
 
 		Resource res = getResource();
 		try {
+			// Note on error handling: We want to avoid any generic HTML document 
+			// (i.e. default HTTP error pages) and other invalid responses being accepted 
+			// as an empty list of JWKs.
+			//
+			// This is handled by the underlying parser. It checks that the transferred 
+			// document is in fact a JSON document, and that the "keys" field is present.
+			
 			JWKSet jwkSet = JWKSet.parse(res.getContent());
 
-			if (jwkSet == null || jwkSet.isEmpty()) {
-				// assume the server returns some kind of incomplete document, treat this
-				// equivalent to an input/output exception.
-				throw new JWKSetTransferException("No JWKs found at " + url);
+			if (jwkSet.isEmpty()) {
+				LOGGER.warning(url + " returned an empty list of JWKs; no JWT signatures can be verified.");
+			} else {
+				LOGGER.info(url + " returned " + jwkSet.size() + " JWKs");
 			}
-			LOGGER.info(url + " returned " + jwkSet.size() + " JWKs");
 
 			return jwkSet;
-		} catch (java.text.ParseException e) {
-			// assume the server returns some kind of generic document, treat this
-			// equivalent to an input/output exception.
+		} catch (Exception e) {
+			// assume the server returns some kind of generic or incomplete document, 
+			// treat this equivalent to an input/output exception.
 
 			throw new JWKSetParseException("Couldn't parse remote JWK set: " + e.getMessage(), e);
 		}

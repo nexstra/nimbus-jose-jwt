@@ -40,7 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -159,8 +158,10 @@ public class UrlJWKSourceTest {
 			.withStatus(200)
 			.withHeader("Content-Type", "application/json")
 			.withBody( JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
+		
+		DefaultResourceRetriever retriever = new DefaultResourceRetriever();
 
-		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
+		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL, retriever).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
