@@ -38,13 +38,15 @@ public class ThumbprintURITest extends TestCase {
 	
 	public void testSpecExample() throws ParseException {
 		
+		String hashAlg = "sha-256";
 		Base64URL value = new Base64URL("NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs");
 		
-		ThumbprintURI thumbprintURI = new ThumbprintURI(value);
+		ThumbprintURI thumbprintURI = new ThumbprintURI(hashAlg, value);
+		assertEquals(hashAlg, thumbprintURI.getAlgorithmString());
 		assertEquals(value, thumbprintURI.getThumbprint());
 		
-		assertEquals("urn:ietf:params:oauth:jwk-thumbprint:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs", thumbprintURI.toString());
-		assertEquals("urn:ietf:params:oauth:jwk-thumbprint:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs", thumbprintURI.toURI().toString());
+		assertEquals("urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs", thumbprintURI.toString());
+		assertEquals("urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs", thumbprintURI.toURI().toString());
 		
 		thumbprintURI = ThumbprintURI.parse(thumbprintURI.toString());
 		assertEquals(value, thumbprintURI.getThumbprint());
@@ -64,9 +66,55 @@ public class ThumbprintURITest extends TestCase {
 		
 		ThumbprintURI thumbprintURI = rsaKey.computeThumbprintURI();
 		
-		assertEquals(ThumbprintURI.PREFIX + ThumbprintUtils.compute(rsaKey), thumbprintURI.toString());
+		assertEquals("sha-256", thumbprintURI.getAlgorithmString());
+		
+		assertEquals(ThumbprintURI.PREFIX + "sha-256:" + ThumbprintUtils.compute(rsaKey), thumbprintURI.toString());
 		
 		assertEquals(thumbprintURI, ThumbprintURI.compute(rsaKey));
+	}
+	
+	
+	public void testConstructor_nullAlg() {
+		
+		try {
+			new ThumbprintURI(null, new Base64URL("NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"));
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("The hash algorithm must not be null or empty", e.getMessage());
+		}
+	}
+	
+	
+	public void testConstructor_emptyAlg() {
+		
+		try {
+			new ThumbprintURI("", new Base64URL("NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"));
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("The hash algorithm must not be null or empty", e.getMessage());
+		}
+	}
+	
+	
+	public void testConstructor_nullThumbprint() {
+		
+		try {
+			new ThumbprintURI("sha-256", null);
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("The thumbprint must not be null or empty", e.getMessage());
+		}
+	}
+	
+	
+	public void testConstructor_emptyThumbprint() {
+		
+		try {
+			new ThumbprintURI("sha-256", new Base64URL(""));
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("The thumbprint must not be null or empty", e.getMessage());
+		}
 	}
 	
 	
@@ -81,13 +129,46 @@ public class ThumbprintURITest extends TestCase {
 	}
 	
 	
-	public void testParse_emptyValue() {
+	public void testParse_emptyValuesString() {
 		
 		try {
 			ThumbprintURI.parse(ThumbprintURI.PREFIX + "");
 			fail();
 		} catch (ParseException e) {
-			assertEquals("Illegal JWK thumbprint: Empty value", e.getMessage());
+			assertEquals("Illegal JWK thumbprint: Missing value", e.getMessage());
+		}
+	}
+	
+	
+	public void testParse_emptyAlg() {
+		
+		try {
+			ThumbprintURI.parse(ThumbprintURI.PREFIX + ":NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs");
+			fail();
+		} catch (ParseException e) {
+			assertEquals("Illegal JWK thumbprint: The hash algorithm must not be empty", e.getMessage());
+		}
+	}
+	
+	
+	public void testParse_missingThumbprint() {
+		
+		try {
+			ThumbprintURI.parse(ThumbprintURI.PREFIX + "sha-256");
+			fail();
+		} catch (ParseException e) {
+			assertEquals("Illegal JWK thumbprint: Unexpected number of components", e.getMessage());
+		}
+	}
+	
+	
+	public void testParse_emptyThumbprint() {
+		
+		try {
+			ThumbprintURI.parse(ThumbprintURI.PREFIX + "sha-256:");
+			fail();
+		} catch (ParseException e) {
+			assertEquals("Illegal JWK thumbprint: Unexpected number of components", e.getMessage());
 		}
 	}
 }

@@ -72,7 +72,7 @@ The library handles the following JOSE algorithms:
 * RFC 8812 - CBOR Object Signing and Encryption (COSE) and JSON Object Signing  
   and Encryption (JOSE) Registrations for Web Authentication (WebAuthn) 
   Algorithms
-* draft-ietf-oauth-jwk-thumbprint-uri-00 - JSON Web Key (JWK) Thumbprint URI
+* draft-ietf-oauth-jwk-thumbprint-uri-01 - JSON Web Key (JWK) Thumbprint URI
 * draft-madden-jose-ecdh-1pu-04 - Public Key Authenticated Encryption for JOSE: 
   ECDH-1PU
 * draft-amringer-jose-chacha-02 - Chacha derived AEAD algorithms in JSON Object 

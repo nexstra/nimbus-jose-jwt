@@ -32,10 +32,16 @@ import com.nimbusds.jose.util.Base64URL;
 /**
  * JSON Web Key (JWK) thumbprint URI.
  *
- * <p>See draft-ietf-oauth-jwk-thumbprint-uri
+ * <p>Example SHA-256 thumbprint URI:
+ *
+ * <pre>
+ * urn:ietf:params:oauth:jwk-thumbprint:sha-256:NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs
+ * </pre>
+ *
+ * <p>See draft-ietf-oauth-jwk-thumbprint-uri-01
  *
  * @author Vladimir Dzhuvinov
- * @version 2022-01-30
+ * @version 2022-02-21
  */
 @Immutable
 public class ThumbprintURI {
@@ -48,7 +54,13 @@ public class ThumbprintURI {
 	
 	
 	/**
-	 * The thumbprint value;
+	 * The hash algorithm.
+	 */
+	private final String hashAlg;
+	
+	
+	/**
+	 * The thumbprint value.
 	 */
 	private final Base64URL thumbprint;
 	
@@ -56,13 +68,30 @@ public class ThumbprintURI {
 	/**
 	 * Creates a new JWK thumbprint URI.
 	 *
-	 * @param thumbprint the thumbprint value. Must not be {@code null}.
+	 * @param hashAlg    The hash algorithm. Must not be {@code null}.
+	 * @param thumbprint The thumbprint value. Must not be {@code null}.
 	 */
-	public ThumbprintURI(final Base64URL thumbprint) {
-		if (thumbprint == null) {
-			throw new IllegalArgumentException("The thumbprint must not be null");
+	public ThumbprintURI(final String hashAlg, final Base64URL thumbprint) {
+		if (hashAlg == null || hashAlg.isEmpty()) {
+			throw new IllegalArgumentException("The hash algorithm must not be null or empty");
+		}
+		this.hashAlg = hashAlg;
+		
+		if (thumbprint == null || thumbprint.toString().isEmpty()) {
+			throw new IllegalArgumentException("The thumbprint must not be null or empty");
 		}
 		this.thumbprint = thumbprint;
+	}
+	
+	
+	/**
+	 * Returns the hash algorithm string.
+	 *
+	 * @return The hash algorithm string.
+	 */
+	public String getAlgorithmString() {
+		
+		return hashAlg;
 	}
 	
 	
@@ -84,14 +113,14 @@ public class ThumbprintURI {
 	 */
 	public URI toURI() {
 		
-		return URI.create(PREFIX + thumbprint);
+		return URI.create(toString());
 	}
 	
 	
 	@Override
 	public String toString() {
 		
-		return PREFIX + thumbprint;
+		return PREFIX + hashAlg + ":" + thumbprint;
 	}
 	
 	
@@ -100,13 +129,13 @@ public class ThumbprintURI {
 		if (this == o) return true;
 		if (!(o instanceof ThumbprintURI)) return false;
 		ThumbprintURI that = (ThumbprintURI) o;
-		return getThumbprint().equals(that.getThumbprint());
+		return hashAlg.equals(that.hashAlg) && getThumbprint().equals(that.getThumbprint());
 	}
 	
 	
 	@Override
 	public int hashCode() {
-		return Objects.hash(getThumbprint());
+		return Objects.hash(hashAlg, getThumbprint());
 	}
 	
 	
@@ -123,7 +152,7 @@ public class ThumbprintURI {
 	public static ThumbprintURI compute(final JWK jwk)
 		throws JOSEException {
 		
-		return new ThumbprintURI(jwk.computeThumbprint());
+		return new ThumbprintURI("sha-256", jwk.computeThumbprint());
 	}
 	
 	
@@ -140,18 +169,25 @@ public class ThumbprintURI {
 		throws ParseException {
 		
 		String uriString = uri.toString();
-		
 		if (! uriString.startsWith(PREFIX)) {
 			throw new ParseException("Illegal JWK thumbprint prefix", 0);
 		}
 		
-		String thumbprintValue = uriString.substring(PREFIX.length());
-		
-		if (thumbprintValue.isEmpty()) {
-			throw new ParseException("Illegal JWK thumbprint: Empty value", 0);
+		String valuesString = uriString.substring(PREFIX.length());
+		if (valuesString.isEmpty()) {
+			throw new ParseException("Illegal JWK thumbprint: Missing value", 0);
 		}
 		
-		return new ThumbprintURI(new Base64URL(thumbprintValue));
+		String[] values = valuesString.split(":");
+		if (values.length != 2) {
+			throw new ParseException("Illegal JWK thumbprint: Unexpected number of components", 0);
+		}
+		if (values[0].isEmpty()) {
+			throw new ParseException("Illegal JWK thumbprint: The hash algorithm must not be empty", 0);
+		}
+		// Empty thumbprint prevented by split method
+		
+		return new ThumbprintURI(values[0], new Base64URL(values[1]));
 	}
 	
 	

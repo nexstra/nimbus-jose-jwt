@@ -1414,3 +1414,6 @@ version 9.18 (2022-01-30)
 version 9.19 (2022-02-07)
     * Updates KeyUse.from(X509Certificate) to return null when the certificate
       public key use doesn't map to a single JWK use value (iss #461).
+
+version 9.20 (2022-02-21)
+    * Upgrades ThumbprintURI to draft-ietf-oauth-jwk-thumbprint-uri-01.

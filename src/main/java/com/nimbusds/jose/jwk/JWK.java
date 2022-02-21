@@ -70,7 +70,7 @@ import com.nimbusds.jose.util.*;
  * @author Vladimir Dzhuvinov
  * @author Justin Richer
  * @author Stefan Larsson
- * @version 2020-02-09
+ * @version 2020-02-21
  */
 public abstract class JWK implements Serializable {
 
@@ -416,7 +416,7 @@ public abstract class JWK implements Serializable {
 	public ThumbprintURI computeThumbprintURI()
 		throws JOSEException {
 		
-		return new ThumbprintURI(computeThumbprint("SHA-256"));
+		return new ThumbprintURI("sha-256", computeThumbprint("SHA-256"));
 	}
 
 
