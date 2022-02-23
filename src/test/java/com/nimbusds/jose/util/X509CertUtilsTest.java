@@ -24,6 +24,7 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.Provider;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
@@ -347,5 +348,41 @@ public class X509CertUtilsTest extends TestCase {
 		
 		Assert.assertArrayEquals(ecJWK.toPrivateKey().getEncoded(), privateKeyEntry.getPrivateKey().getEncoded());
 		Assert.assertArrayEquals(cert.getEncoded(), privateKeyEntry.getCertificate().getEncoded());
+	}
+	
+	
+	public void testParseSampleCert_attestAndroidCom() {
+		
+		String certB64 =
+			"MIIEijCCA3KgAwIBAgIIYkYo5F0g86kwDQYJKoZIhvcNAQELBQAwVDELMAkGA1U" +
+			"EBhMCVVMxHjAcBgNVBAoTFUdvb2dsZSBUcnVzdCBTZXJ2aWNlczElMCMGA1UEAx" +
+			"McR29vZ2xlIEludGVybmV0IEF1dGhvcml0eSBHMzAeFw0xNzEyMDQxMzE4NDNaF" +
+			"w0xODEyMDMwMDAwMDBaMGwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9y" +
+			"bmlhMRYwFAYDVQQHDA1Nb3VudGFpbiBWaWV3MRMwEQYDVQQKDApHb29nbGUgSW5" +
+			"jMRswGQYDVQQDDBJhdHRlc3QuYW5kcm9pZC5jb20wggEiMA0GCSqGSIb3DQEBAQ" +
+			"UAA4IBDwAwggEKAoIBAQCUj8wYoPixKbbV8sgYgvMTfX+dIsFTOkgKOlhT0i0bc" +
+			"DFZK2rOxJZ2uSLSVhYvipZNE3HJQYuuYwFjiy+ykfatAGSjRzF1b31u43/7oG5j" +
+			"Mh3S37alwjUb8CWiTxoipVOYwKKzuUykqECtjlhJ4AkWaDS+ZxKEqOae9tnCgeH" +
+			"llZE/ORgeMax2XNCoH6srTERcksjzZZrAWxKsdfvVrXNzCR9DxVASuI6Lzwh8DS" +
+			"l2EOokbsanZ++/JqMeABFfPwjywrb0prEUy0paeVsud+0peexK/5+E6kpYGK4ZK" +
+			"2nkoVLugE5taHrAj83Q+PObbvOzWcFkpnVKyjo6KQAmX6WJAgMBAAGjggFGMIIB" +
+			"QjATBgNVHSUEDDAKBggrBgEFBQcDATAdBgNVHREEFjAUghJhdHRlc3QuYW5kcm9" +
+			"pZC5jb20waAYIKwYBBQUHAQEEXDBaMC0GCCsGAQUFBzAChiFodHRwOi8vcGtpLm" +
+			"dvb2cvZ3NyMi9HVFNHSUFHMy5jcnQwKQYIKwYBBQUHMAGGHWh0dHA6Ly9vY3NwL" +
+			"nBraS5nb29nL0dUU0dJQUczMB0GA1UdDgQWBBQG8IrQtFR6CUSkikb3aimsm26c" +
+			"BTAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFHfCuFCaZ3Z2sS3ChtCDoH6mfrp" +
+			"LMCEGA1UdIAQaMBgwDAYKKwYBBAHWeQIFAzAIBgZngQwBAgIwMQYDVR0fBCowKD" +
+			"AmoCSgIoYgaHR0cDovL2NybC5wa2kuZ29vZy9HVFNHSUFHMy5jcmwwDQYJKoZIh" +
+			"vcNAQELBQADggEBAF/RzNnC5DzBUBtnh2ntJLWEQh9zEeFZfPL9QokrlAoXgjWg" +
+			"N8pSRU1lVGIptzMxGhy3/ORRZTa6D2Dy8hvCDrFI3+lCY01ML5Q6XNE5Rs2d1Ri" +
+			"ZpMszD4KQZNG3hZ0BFNQ/cjrCmLBOGKkEU1dmAXsFJXJiOr2CNTBOTu9EbLWhQf" +
+			"dCF1bwzyu+W6bQSv8QDn5OdMS/PqE1dEget/6EIRB761KfZQ+/DE6Lp3TrZTpOF" +
+			"DDgXh+LgGOswhElj9c3vZHGJnhjpt8rkbir/2uLGfxlVZ4K1x5DRN0PULd9yPSm" +
+			"jg+aj1+tHwI1mQmZVY7qvO5DghOxhJMGlz6lLiZmzog=";
+		
+		X509Certificate cert = X509CertUtils.parse(new Base64(certB64).decode());
+		
+		assertEquals("CN=attest.android.com, O=Google Inc, L=Mountain View, ST=California, C=US", cert.getSubjectDN().getName());
+		assertEquals("CN=Google Internet Authority G3, O=Google Trust Services, C=US", cert.getIssuerDN().getName());
 	}
 }
