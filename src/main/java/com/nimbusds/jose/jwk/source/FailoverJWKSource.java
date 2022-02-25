@@ -31,13 +31,13 @@ import java.io.Closeable;
 import java.util.List;
 
 @ThreadSafe
-public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthProvider, Closeable {
+public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthSource, Closeable {
 
 	private final JWKSource<C> failoverJWKSource;
 	private final JWKSource<C> jwkSource;
 
-	private final JWKSetHealthProvider jwkSourcehHealthProvider;
-	private final JWKSetHealthProvider failoverJWKSourcehHealthProvider;
+	private final JWKSetHealthSource jwkSourcehHealthSource;
+	private final JWKSetHealthSource failoverJWKSourcehHealthSource;
 
 	/**
 	 * Creates a new remote JWK set using a failover.
@@ -51,23 +51,23 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 		this.failoverJWKSource = failoverJWKSource;
 
 		if (supportsHealth(jwkSource)) {
-			jwkSourcehHealthProvider = (JWKSetHealthProvider) jwkSource;
+			jwkSourcehHealthSource = (JWKSetHealthSource) jwkSource;
 		} else {
-			jwkSourcehHealthProvider = null;
+			jwkSourcehHealthSource = null;
 		}
 
 		if (supportsHealth(failoverJWKSource)) {
-			failoverJWKSourcehHealthProvider = (JWKSetHealthProvider) failoverJWKSource;
+			failoverJWKSourcehHealthSource = (JWKSetHealthSource) failoverJWKSource;
 		} else {
-			failoverJWKSourcehHealthProvider = null;
+			failoverJWKSourcehHealthSource = null;
 		}
 
 	}
 
 	private boolean supportsHealth(JWKSource<C> source) {
-		if (source instanceof JWKSetHealthProvider) {
-			JWKSetHealthProvider provider = (JWKSetHealthProvider) source;
-			return provider.supportsHealth();
+		if (source instanceof JWKSetHealthSource) {
+			JWKSetHealthSource jwkSetHealthSource = (JWKSetHealthSource) source;
+			return jwkSetHealthSource.supportsHealth();
 		}
 		return false;
 	}
@@ -114,12 +114,12 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 	@Override
 	public JWKSetHealth getHealth(boolean refresh) {
 		JWKSetHealth health = null;
-		if (jwkSourcehHealthProvider != null) {
-			health = jwkSourcehHealthProvider.getHealth(refresh);
+		if (jwkSourcehHealthSource != null) {
+			health = jwkSourcehHealthSource.getHealth(refresh);
 		}
 		if (health == null || !health.isSuccess()) {
-			if (failoverJWKSourcehHealthProvider != null) {
-				health = failoverJWKSourcehHealthProvider.getHealth(refresh);
+			if (failoverJWKSourcehHealthSource != null) {
+				health = failoverJWKSourcehHealthSource.getHealth(refresh);
 			}
 		}
 		if (health == null) {
@@ -130,6 +130,6 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 
 	@Override
 	public boolean supportsHealth() {
-		return jwkSourcehHealthProvider != null || failoverJWKSourcehHealthProvider != null;
+		return jwkSourcehHealthSource != null || failoverJWKSourcehHealthSource != null;
 	}
 }

@@ -5,7 +5,7 @@ import java.io.IOException;
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
 
-public class MutableJWKSetProvider implements JWKSetProvider {
+public class MutableJWKSetSource implements JWKSetSource {
 
 	private JWKSet set;
 	

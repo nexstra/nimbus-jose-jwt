@@ -10,18 +10,18 @@ import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jose.util.StandardCharset;
 
 /**
- * {@linkplain JWKSetProvider} that loads them from a file URL. Primarily intended for testing purposes;
+ * {@linkplain JWKSetSource} that loads them from a file URL. Primarily intended for testing purposes;
  * a user can manipulate a local file to emulate authorization server downtime and so on. 
  */
 
-public class LocalUrlJWKSetProvider extends AbstractResourceJWKSetProvider {
+public class LocalUrlJWKSetSource extends AbstractResourceJWKSetSource {
 
 	/**
-	 * Creates a provider that loads from the given URL
+	 * Creates a JWK set source that loads from the given URL
 	 *
 	 * @param url			to load the JWKS
 	 */
-	public LocalUrlJWKSetProvider(URL url) {
+	public LocalUrlJWKSetSource(URL url) {
 		super(url);
 	}
 

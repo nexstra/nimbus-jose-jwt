@@ -27,16 +27,16 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class RateLimitedJWKSetProviderTest extends AbstractDelegateProviderTest {
+public class RateLimitedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private RateLimitedJWKSetProvider provider;
+	private RateLimitedJWKSetSource provider;
 
 	private int duration = 30 * 1000;
 	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RateLimitedJWKSetProvider(delegate, duration);
+		provider = new RateLimitedJWKSetSource(delegate, duration);
 	}
 
 	@Test

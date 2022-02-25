@@ -31,14 +31,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class OutageCachedJWKSetProviderTest extends AbstractDelegateProviderTest {
+public class OutageCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private OutageCachedJWKSetProvider provider;
+	private OutageCachedJWKSetSource provider;
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new OutageCachedJWKSetProvider(delegate, 10 * 3600 * 1000);
+		provider = new OutageCachedJWKSetSource(delegate, 10 * 3600 * 1000);
 	}
 
 	@Test
@@ -79,6 +79,6 @@ public class OutageCachedJWKSetProviderTest extends AbstractDelegateProviderTest
 
 	@Test
 	public void testShouldGetBaseProvider() {
-		assertEquals(provider.getProvider(), delegate);
+		assertEquals(provider.getSource(), delegate);
 	}
 }

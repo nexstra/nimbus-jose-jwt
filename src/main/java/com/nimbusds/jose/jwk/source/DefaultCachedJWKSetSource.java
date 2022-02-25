@@ -25,12 +25,12 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 /**
- * Caching {@linkplain JWKSetProvider}. Blocks when the cache is updated.
+ * Caching {@linkplain JWKSetSource}. Blocks when the cache is updated.
  */
 
-public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
+public class DefaultCachedJWKSetSource extends AbstractCachedJWKSetSource {
 
-	private static final Logger LOGGER = Logger.getLogger(DefaultCachedJWKSetProvider.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(DefaultCachedJWKSetSource.class.getName());
 
 	protected final ReentrantLock lock = new ReentrantLock();
 
@@ -39,13 +39,13 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	/**
 	 * Construct new instance.
 	 * 
-	 * @param provider	     JWK provider
+	 * @param source	     JWK set source
 	 * @param timeToLive	 cache hold time (in milliseconds)
 	 * @param refreshTimeout cache refresh timeout unit
 	 */
 
-	public DefaultCachedJWKSetProvider(JWKSetProvider provider, long timeToLive, long refreshTimeout) {
-		super(provider, timeToLive);
+	public DefaultCachedJWKSetSource(JWKSetSource source, long timeToLive, long refreshTimeout) {
+		super(source, timeToLive);
 
 		this.refreshTimeout = refreshTimeout;
 	}
@@ -61,7 +61,7 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 
 	protected JWKSetCacheItem getJwksBlocking(long currentTime) throws KeySourceException {
 		// Synchronize so that the first thread to acquire the lock
-		// exclusively gets to call the underlying provider.
+		// exclusively gets to call the underlying source.
 		// Other (later) threads must wait until the result is ready.
 		//
 		// If the first to get the lock fails within the waiting interval,
@@ -82,7 +82,7 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 						// We hold the lock, so safe to update it now
 						LOGGER.info("Perform JWK cache refresh..");
 
-						JWKSetCacheItem result = loadJWKSetFromProvider(currentTime);
+						JWKSetCacheItem result = loadJWKSetFromSource(currentTime);
 
 						LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting), now have " + result.getValue().size() + " JWKs");
 
@@ -108,7 +108,7 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 							// We hold the lock, so safe to update it now
 							LOGGER.warning("JWK cache was NOT successfully refreshed while waiting, retry now (with " + lock.getQueueLength() + " waiting).." );
 							
-							cache = loadJWKSetFromProvider(currentTime);
+							cache = loadJWKSetFromSource(currentTime);
 							
 							LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting)");
 						} else {
@@ -146,15 +146,15 @@ public class DefaultCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
 	}
 
 	/**
-	 * Load JWKs from wrapped provider. Guaranteed to only run for one thread at a time.
+	 * Load JWKs from wrapped source. Guaranteed to only run for one thread at a time.
 	 *
 	 * @param currentTime current time
 	 * @return cache item
 	 * @throws JwksException if loading could not be performed
 	 */
 
-	protected JWKSetCacheItem loadJWKSetFromProvider(long currentTime) throws KeySourceException {
-		JWKSet all = provider.getJWKSet(currentTime, false);
+	protected JWKSetCacheItem loadJWKSetFromSource(long currentTime) throws KeySourceException {
+		JWKSet all = source.getJWKSet(currentTime, false);
 
 		JWKSetCacheItem cache = createJWKSetCacheItem(all, currentTime);
 		

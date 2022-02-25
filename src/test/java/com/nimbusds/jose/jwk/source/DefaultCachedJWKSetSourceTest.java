@@ -40,7 +40,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class DefaultCachedJWKSetProviderTest extends AbstractDelegateProviderTest {
+public class DefaultCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private Runnable lockRunnable = new Runnable() {
 		@Override
@@ -58,12 +58,12 @@ public class DefaultCachedJWKSetProviderTest extends AbstractDelegateProviderTes
 		}
 	};
 
-	private DefaultCachedJWKSetProvider provider;
+	private DefaultCachedJWKSetSource provider;
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new DefaultCachedJWKSetProvider(delegate, 10 * 3600 * 1000, 2 * 1000);
+		provider = new DefaultCachedJWKSetSource(delegate, 10 * 3600 * 1000, 2 * 1000);
 	}
 
 	@Test
@@ -125,7 +125,7 @@ public class DefaultCachedJWKSetProviderTest extends AbstractDelegateProviderTes
 
 	@Test
 	public void testShouldGetBaseProvider() throws Exception {
-		assertThat(provider.getProvider(), equalTo(delegate));
+		assertThat(provider.getSource(), equalTo(delegate));
 	}
 
 	@Test

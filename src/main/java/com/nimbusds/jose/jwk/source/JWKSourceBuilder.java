@@ -25,7 +25,7 @@ import java.net.URL;
 import java.util.Objects;
 
 /**
- * JwkProvider builder
+ * {@linkplain JWKSource} builder
  * 
  * @see <a href=
  *	  "https://www.sitepoint.com/self-types-with-javas-generics/">https://www.sitepoint.com/self-types-with-javas-generics/</a>
@@ -34,32 +34,32 @@ import java.util.Objects;
 public class JWKSourceBuilder<C extends SecurityContext> {
 
 	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url, ResourceRetriever resourceRetriever) {
-		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetProvider(url, resourceRetriever));
+		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetSource(url, resourceRetriever));
 	}
 
 	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url) {
-		JWKSetProvider jwkSetProvider;
+		JWKSetSource jwkSetSource;
 		
 		String protocol = url.getProtocol();
 		if(Objects.equals(protocol, "file")) {
-			jwkSetProvider = new LocalUrlJWKSetProvider(url);
+			jwkSetSource = new LocalUrlJWKSetSource(url);
 		} else {
 			DefaultResourceRetriever jwkSetRetriever = new DefaultResourceRetriever(
 					RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT,
 					RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT,
 					RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT);
 			
-			jwkSetProvider = new ResourceRetrieverJWKSetProvider(url, jwkSetRetriever);
+			jwkSetSource = new ResourceRetrieverJWKSetSource(url, jwkSetRetriever);
 		}
-		return new JWKSourceBuilder<>(jwkSetProvider);
+		return new JWKSourceBuilder<>(jwkSetSource);
 	}
 	
-	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(JWKSetProvider provider) {
-		return new JWKSourceBuilder<>(provider);
+	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(JWKSetSource source) {
+		return new JWKSourceBuilder<>(source);
 	}
 
-	// root provider
-	protected final JWKSetProvider jwkSetProvider;
+	// root source
+	protected final JWKSetSource jwkSetSource;
 
 	// cache
 	protected boolean cached = true;
@@ -89,20 +89,20 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	protected JWKSource<C> failover;
 
 	/**
-	 * Wrap a specific {@linkplain JWKSetProvider}. Access to this instance will be
+	 * Wrap a specific {@linkplain JWKSetSource}. Access to this instance will be
 	 * cached and/or rate-limited according to the configuration of this builder.
 	 *
-	 * @param jwkSetProvider root JwksProvider
+	 * @param jwkSetSource root JWK set source
 	 */
 
-	JWKSourceBuilder(JWKSetProvider jwkSetProvider) {
-		this.jwkSetProvider = jwkSetProvider;
+	JWKSourceBuilder(JWKSetSource jwkSetSource) {
+		this.jwkSetSource = jwkSetSource;
 	}
 
 	/**
-	 * Toggle the cache of Jwk. By default the provider will use cache.
+	 * Toggle the cache of JWK. By default the source will use cache.
 	 *
-	 * @param cached if the provider should cache jwks
+	 * @param cached if the source should cache jwks
 	 * @return the builder
 	 */
 	public JWKSourceBuilder<C> cached(boolean cached) {
@@ -127,9 +127,9 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	}
 
 	/**
-	 * Toggle the cache of Jwk. By default the provider will use cache.
+	 * Toggle the cache of Jwk. By default the source will use cache.
 	 *
-	 * @param cached if the provider should cache jwks
+	 * @param cached if the source should cache jwks
 	 * @return the builder
 	 */
 	public JWKSourceBuilder<C> cachedForever() {
@@ -174,9 +174,9 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	}
 
 	/**
-	 * Toggle the rate limit of Jwk. By default the Provider will use rate limit.
+	 * Toggle the rate limit of Jwk. By default the source will use rate limit.
 	 *
-	 * @param rateLimited if the provider should rate limit jwks
+	 * @param rateLimited if the source should rate limit jwks
 	 * @return the builder
 	 */
 	public JWKSourceBuilder<C> rateLimited(boolean rateLimited) {
@@ -205,8 +205,8 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		return this;
 	}
 
-	protected JWKSetProvider getRateLimitedProvider(JWKSetProvider provider) {
-		return new RateLimitedJWKSetProvider(provider, refillDuration);
+	protected JWKSetSource getRateLimitedSource(JWKSetSource source) {
+		return new RateLimitedJWKSetSource(source, refillDuration);
 	}
 
 	public JWKSourceBuilder<C> retrying(boolean retrying) {
@@ -218,7 +218,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	/**
 	 * Toggle the health status. By default this option is enabled.
 	 *
-	 * @param enabled true if the health status provider should be enabled
+	 * @param enabled true if the health status source should be enabled
 	 * @return the builder
 	 */
 	public JWKSourceBuilder<C> health(boolean enabled) {
@@ -227,7 +227,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	}
 
 	/**
-	 * Toggle the outage cache. By default the Provider will not use an outage
+	 * Toggle the outage cache. By default the source will not use an outage
 	 * cache.
 	 *
 	 * @param outageCached if the outage cache is enabled
@@ -270,7 +270,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	 * @return a newly created {@link JWKSource}
 	 */
 	public JWKSource<C> build() {
-		JWKSetProvider provider = jwkSetProvider;
+		JWKSetSource source = jwkSetSource;
 
 		if (!cached && rateLimited) {
 			throw new IllegalStateException("Ratelimiting configured without caching");
@@ -291,7 +291,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		}
 
 		if (retrying) {
-			provider = new RetryingJWKSetProvider(provider);
+			source = new RetryingJWKSetSource(source);
 		}
 		
 		if (outageCached) {
@@ -303,28 +303,28 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 					outageCachedDuration = 5 * 60 * 1000 * 10; 
 				}
 			}
-			provider = new OutageCachedJWKSetProvider(provider, outageCachedDuration);
+			source = new OutageCachedJWKSetSource(source, outageCachedDuration);
 		}
 
-		DefaultHealthJWKSetProvider healthProvider = null;
+		DefaultHealthJWKSetSource healthSource = null;
 		if (health) {
-			provider = healthProvider = new DefaultHealthJWKSetProvider(provider);
+			source = healthSource = new DefaultHealthJWKSetSource(source);
 		}
 
 		if (rateLimited) {
-			provider = getRateLimitedProvider(provider);
+			source = getRateLimitedSource(source);
 		}
 		if (preemptiveRefresh) {
-			provider = new PreemptiveCachedJWKSetProvider(provider, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshEager);
+			source = new PreemptiveCachedJWKSetSource(source, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshEager);
 		} else if (cached) {
-			provider = new DefaultCachedJWKSetProvider(provider, cacheDuration, cacheRefreshTimeoutDuration);
+			source = new DefaultCachedJWKSetSource(source, cacheDuration, cacheRefreshTimeoutDuration);
 		}
 		if (health) {
-			// set the top level on the health provider, for refreshing from the top.
-			healthProvider.setRefreshProvider(provider);
+			// set the top level on the health source, for refreshing from the top.
+			healthSource.setRefreshSource(source);
 		}
 
-		JWKSource<C> jwkSource = new UrlJWKSource<>(provider);
+		JWKSource<C> jwkSource = new UrlJWKSource<>(source);
 		if(failover != null) {
 			return new FailoverJWKSource<>(jwkSource, failover);
 		}

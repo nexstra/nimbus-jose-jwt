@@ -30,11 +30,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public abstract class AbstractDelegateProviderTest {
+public abstract class AbstractDelegateSourceTest {
 
 	protected static final String KID = "NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg";
 
-	protected JWKSetProvider delegate;
+	protected JWKSetSource delegate;
 
 	protected JWK jwk;
 
@@ -46,7 +46,7 @@ public abstract class AbstractDelegateProviderTest {
 
 	@Before
 	public void setUp() throws Exception {
-		delegate = mock(JWKSetProvider.class);
+		delegate = mock(JWKSetSource.class);
 		jwk = mock(JWK.class);
 		when(jwk.getKeyID()).thenReturn(KID);
 		jwks = new JWKSet(Arrays.asList(jwk));

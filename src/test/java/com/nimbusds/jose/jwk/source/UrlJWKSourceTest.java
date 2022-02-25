@@ -134,7 +134,7 @@ public class UrlJWKSourceTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSetProvider provider = jwkSetSource.getProvider();
+		JWKSetSource provider = jwkSetSource.getSource();
 		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false);
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
@@ -172,7 +172,7 @@ public class UrlJWKSourceTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSetProvider provider = jwkSetSource.getProvider();
+		JWKSetSource provider = jwkSetSource.getSource();
 		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false);
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
@@ -257,7 +257,7 @@ public class UrlJWKSourceTest {
 		assertEquals(1, matches.size());
 
 		// Check cache
-		JWKSet out = jwkSetSource.getProvider().getJWKSet(System.currentTimeMillis(), false);
+		JWKSet out = jwkSetSource.getSource().getJWKSet(System.currentTimeMillis(), false);
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -539,7 +539,7 @@ public class UrlJWKSourceTest {
 		
 		final AtomicInteger invocationCounter = new AtomicInteger(0);
 
-		MutableJWKSetProvider provider = new MutableJWKSetProvider() {
+		MutableJWKSetSource provider = new MutableJWKSetSource() {
 			@Override
 			public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 				invocationCounter.incrementAndGet();

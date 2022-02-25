@@ -20,10 +20,10 @@ package com.nimbusds.jose.jwk.source;
 import com.nimbusds.jose.jwk.JWKSet;
 
 /**
- * JWK provider that caches previously obtained list of JWK in memory.
+ * JWK set source that caches previously obtained list of JWK in memory.
  */
 
-public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
+public abstract class AbstractCachedJWKSetSource extends BaseJWKSetSource {
 
 	protected static class JWKSetCacheItem {
 
@@ -60,8 +60,8 @@ public abstract class AbstractCachedJWKSetProvider extends BaseJWKSetProvider {
 	protected volatile JWKSetCacheItem cache;
 	protected final long timeToLive; // milliseconds
 
-	public AbstractCachedJWKSetProvider(JWKSetProvider provider, long timeToLive) {
-		super(provider);
+	public AbstractCachedJWKSetSource(JWKSetSource source, long timeToLive) {
+		super(source);
 		this.timeToLive = timeToLive;
 	}
 

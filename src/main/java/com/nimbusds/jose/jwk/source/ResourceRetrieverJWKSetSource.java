@@ -24,20 +24,20 @@ import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jose.util.ResourceRetriever;
 
 /**
- * Jwk provider that loads them from a {@link URL}
+ * JWK set source that loads from a {@link URL}
  */
 
-public class ResourceRetrieverJWKSetProvider extends AbstractResourceJWKSetProvider {
+public class ResourceRetrieverJWKSetSource extends AbstractResourceJWKSetSource {
 
 	private final ResourceRetriever resourceRetriever;
 
 	/**
-	 * Creates a provider that loads from the given URL
+	 * Creates a JWK set source that loads from the given URL
 	 *
 	 * @param url			   The url of the JWKs
 	 * @param resourceRetriever ResourceRetriever
 	 */
-	public ResourceRetrieverJWKSetProvider(URL url, ResourceRetriever resourceRetriever) {
+	public ResourceRetrieverJWKSetSource(URL url, ResourceRetriever resourceRetriever) {
 		super(url);
 		checkArgument(resourceRetriever != null, "A non-null ResourceRetriever is required");
 

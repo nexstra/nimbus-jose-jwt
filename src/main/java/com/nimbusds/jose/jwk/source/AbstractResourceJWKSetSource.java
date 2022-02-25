@@ -26,22 +26,22 @@ import java.net.URL;
 import java.util.logging.Logger;
 
 /**
- * Abstract superclass for {@linkplain JWKSetProvider} getting its data from an URL.
+ * Abstract superclass for {@linkplain JWKSetSource} getting its data from an URL.
  */
 
-public abstract class AbstractResourceJWKSetProvider implements JWKSetProvider {
+public abstract class AbstractResourceJWKSetSource implements JWKSetSource {
 
-	private static final Logger LOGGER = Logger.getLogger(AbstractResourceJWKSetProvider.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(AbstractResourceJWKSetSource.class.getName());
 
 	protected final URL url;
 
 	/**
-	 * Creates a provider that loads from the given URL
+	 * Creates a set source that loads from the given URL
 	 *
 	 * @param url			   The url of the JWKs
 	 * @param resourceRetriever ResourceRetriever
 	 */
-	public AbstractResourceJWKSetProvider(URL url) {
+	public AbstractResourceJWKSetSource(URL url) {
 		checkArgument(url != null, "A non-null url is required");
 
 		this.url = url;
@@ -88,7 +88,7 @@ public abstract class AbstractResourceJWKSetProvider implements JWKSetProvider {
 	}
 
 	public JWKSetHealth getHealth(boolean refresh) {
-		throw new JWKSetHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
+		throw new JWKSetHealthNotSupportedException(getClass().getName() + " does not support health requests");
 	}
 
 	@Override

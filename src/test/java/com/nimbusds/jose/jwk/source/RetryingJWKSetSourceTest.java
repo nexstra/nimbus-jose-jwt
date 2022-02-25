@@ -28,14 +28,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class RetryingJWKSetProviderTest extends AbstractDelegateProviderTest {
+public class RetryingJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private RetryingJWKSetProvider provider;
+	private RetryingJWKSetSource provider;
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RetryingJWKSetProvider(delegate);
+		provider = new RetryingJWKSetSource(delegate);
 	}
 
 	@Test
@@ -67,6 +67,6 @@ public class RetryingJWKSetProviderTest extends AbstractDelegateProviderTest {
 	}
 
 	public void testShouldGetBaseProvider() throws Exception {
-		assertEquals(provider.getProvider(), delegate);
+		assertEquals(provider.getSource(), delegate);
 	}
 }

@@ -24,29 +24,29 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This provider implements a workaround for temporary network problems /
+ * This JWK set source implements a workaround for temporary network problems /
  * endpoint downtime, running into minutes or hours.<br>
  * <br>
  * <p>
- * It transparently caches a delegate {@linkplain JWKSetProvider}, returning the
+ * It transparently caches a delegate {@linkplain JWKSetSource}, returning the
  * cached value only when the underlying delegate throws a
  * {@linkplain JWKSetUnavailableException}.
  */
 
-public class OutageCachedJWKSetProvider extends AbstractCachedJWKSetProvider {
+public class OutageCachedJWKSetSource extends AbstractCachedJWKSetSource {
 
-	private static final Logger LOGGER = Logger.getLogger(OutageCachedJWKSetProvider.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(OutageCachedJWKSetSource.class.getName());
 
-	public OutageCachedJWKSetProvider(JWKSetProvider delegate, long duration) {
+	public OutageCachedJWKSetSource(JWKSetSource delegate, long duration) {
 		super(delegate, duration);
 	}
 
 	@Override
 	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		try {
-			// cache value, if successfully refreshed by underlying provider
+			// cache value, if successfully refreshed by underlying source
 
-			JWKSet all = provider.getJWKSet(currentTime, forceUpdate);
+			JWKSet all = source.getJWKSet(currentTime, forceUpdate);
 
 			this.cache = createJWKSetCacheItem(all, currentTime);
 

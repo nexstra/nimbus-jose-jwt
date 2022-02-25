@@ -23,7 +23,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 
 /**
  * 
- * {@linkplain JWKSetProvider} that limits the number of invocations per time
+ * {@linkplain JWKSetSource} that limits the number of invocations per time
  * unit. This guards against frequent, potentially costly, downstream calls.
  * <br>
  * <br>
@@ -35,7 +35,7 @@ import com.nimbusds.jose.jwk.JWKSet;
  * The other request is (sometimes) consumed by background refreshes. 
  */
 
-public class RateLimitedJWKSetProvider extends BaseJWKSetProvider {
+public class RateLimitedJWKSetSource extends BaseJWKSetSource {
 
 	// interval duration
 	private final long duration;
@@ -43,13 +43,13 @@ public class RateLimitedJWKSetProvider extends BaseJWKSetProvider {
 	private int counter = 0;
 
 	/**
-	 * Creates a new provider that throttles the number of requests for a JWKSet.
+	 * Creates a new JWK set source that throttles the number of requests for a JWKSet.
 	 *
 	 * @param duration minimum number of milliseconds per two downstream requests.
-	 * @param provider			   provider to use to request jwk when the bucket allows it.
+	 * @param source			   source to request JWK sets from when the rate limit allows it.
 	 */
-	public RateLimitedJWKSetProvider(JWKSetProvider provider, long duration) {
-		super(provider);
+	public RateLimitedJWKSetSource(JWKSetSource source, long duration) {
+		super(source);
 		this.duration = duration;
 	}
 
@@ -69,7 +69,7 @@ public class RateLimitedJWKSetProvider extends BaseJWKSetProvider {
 				counter--;
 			}
 		}
-		return provider.getJWKSet(time, forceUpdate);
+		return source.getJWKSet(time, forceUpdate);
 	}
 
 }

@@ -19,31 +19,31 @@ package com.nimbusds.jose.jwk.source;
 
 import java.io.IOException;
 
-public abstract class BaseJWKSetProvider implements JWKSetProvider {
+public abstract class BaseJWKSetSource implements JWKSetSource {
 
-	protected final JWKSetProvider provider;
+	protected final JWKSetSource source;
 
-	public BaseJWKSetProvider(JWKSetProvider provider) {
-		this.provider = provider;
+	public BaseJWKSetSource(JWKSetSource source) {
+		this.source = source;
 	}
 
-	public JWKSetProvider getProvider() {
-		return provider;
+	public JWKSetSource getSource() {
+		return source;
 	}
 
 	@Override
 	public JWKSetHealth getHealth(boolean refresh) {
-		return provider.getHealth(refresh);
+		return source.getHealth(refresh);
 	}
 	
 	@Override
 	public void close() throws IOException {
-		provider.close();
+		source.close();
 	}
 
 	@Override
 	public boolean supportsHealth() {
-		return provider.supportsHealth();
+		return source.supportsHealth();
 	}
 	
 }

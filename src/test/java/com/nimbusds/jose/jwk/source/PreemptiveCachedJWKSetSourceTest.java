@@ -45,7 +45,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class PreemptiveCachedJWKSetProviderTest extends AbstractDelegateProviderTest {
+public class PreemptiveCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private Runnable lockRunnable = new Runnable() {
 		@Override
@@ -66,14 +66,14 @@ public class PreemptiveCachedJWKSetProviderTest extends AbstractDelegateProvider
 	private static final String KID = "NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg";
 	protected static final JWKSelector KID_SELECTOR = new JWKSelector(new JWKMatcher.Builder().keyID(KID).build());
 
-	private PreemptiveCachedJWKSetProvider provider;
+	private PreemptiveCachedJWKSetSource provider;
 
 	private UrlJWKSource wrapper;
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new PreemptiveCachedJWKSetProvider(delegate, 3600 * 1000 * 10, 15 * 1000, 10 * 1000, false);
+		provider = new PreemptiveCachedJWKSetSource(delegate, 3600 * 1000 * 10, 15 * 1000, 10 * 1000, false);
 
 		wrapper = new UrlJWKSource<>(provider);
 	}
@@ -123,7 +123,7 @@ public class PreemptiveCachedJWKSetProviderTest extends AbstractDelegateProvider
 
 	@Test
 	public void testShouldGetBaseProvider() throws Exception {
-		assertThat(provider.getProvider(), equalTo(delegate));
+		assertThat(provider.getSource(), equalTo(delegate));
 	}
 
 	@Test
@@ -227,7 +227,7 @@ public class PreemptiveCachedJWKSetProviderTest extends AbstractDelegateProvider
 		assertEquals(wrapper.get(aSelector, null), first.getKeys());
 		verify(delegate, only()).getJWKSet(anyLong(), eq(false));
 
-		AbstractCachedJWKSetProvider.JWKSetCacheItem cache = provider.getCache(System.currentTimeMillis());
+		AbstractCachedJWKSetSource.JWKSetCacheItem cache = provider.getCache(System.currentTimeMillis());
 
 		long justBeforeExpiry = provider.getExpires(System.currentTimeMillis()) - TimeUnit.SECONDS.toMillis(5);
 
@@ -305,7 +305,7 @@ public class PreemptiveCachedJWKSetProviderTest extends AbstractDelegateProvider
 		long refreshTimeout = 150;
 		long preemptiveRefresh = 300;
 
-		PreemptiveCachedJWKSetProvider provider = new PreemptiveCachedJWKSetProvider(delegate, timeToLive, refreshTimeout, preemptiveRefresh, true);
+		PreemptiveCachedJWKSetSource provider = new PreemptiveCachedJWKSetSource(delegate, timeToLive, refreshTimeout, preemptiveRefresh, true);
 		UrlJWKSource wrapper = new UrlJWKSource<>(provider);
 
 		JWK a = mock(JWK.class);

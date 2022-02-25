@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 /**
  * 
- * Default 'lazy' implementation of health provider. <br>
+ * Default 'lazy' implementation of health JWK source. <br>
  * <br>
  * Returns bad health if<br>
  * - a previous invocation has failed, and a new invocation (from the top level) fails as well. <br>
@@ -35,43 +35,43 @@ import java.util.logging.Logger;
  * - a previous invocation has failed, but a new invocation (from the top level) is successful.<br>
  * <br>
  * Calls to this health indicator does not trigger a (remote) refresh if the last call to the
- * underlying provider was successful. 
+ * underlying source was successful. 
  */
 
-public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
+public class DefaultHealthJWKSetSource extends BaseJWKSetSource {
 
-	private static final Logger LOGGER = Logger.getLogger(DefaultHealthJWKSetProvider.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(DefaultHealthJWKSetSource.class.getName());
 
-	/** The state of the below provider */
-	private volatile JWKSetHealth providerStatus;
+	/** The state of the below source */
+	private volatile JWKSetHealth sourceStatus;
 	
-	/** The state of the top level provider */
+	/** The state of the top level source */
 	private volatile JWKSetHealth status;
 
 	/**
-	 * Provider to invoke when refreshing state. This should be the top level
-	 * provider, so that caches are actually populated and so on.
+	 * Source to invoke when refreshing state. This should be the top level
+	 * source, so that caches are actually populated and so on.
 	 */
-	private JWKSetProvider refreshProvider;
+	private JWKSetSource refreshSource;
 
-	public DefaultHealthJWKSetProvider(JWKSetProvider provider) {
-		super(provider);
+	public DefaultHealthJWKSetSource(JWKSetSource source) {
+		super(source);
 	}
 
 	@Override
 	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
 		JWKSet list = null;
 		try {
-			list = provider.getJWKSet(currentTime, forceUpdate);
+			list = source.getJWKSet(currentTime, forceUpdate);
 		} finally {
-			setProviderStatus(new JWKSetHealth(currentTime, list != null));
+			setSourceStatus(new JWKSetHealth(currentTime, list != null));
 		}
 
 		return list;
 	}
 
-	protected void setProviderStatus(JWKSetHealth status) {
-		this.providerStatus = status;
+	protected void setSourceStatus(JWKSetHealth status) {
+		this.sourceStatus = status;
 	}
 
 	@Override
@@ -86,23 +86,23 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 				return threadSafeStatus;
 			}
 			// not allowed to refresh
-			// use the latest underlying provider status, if available
-			return providerStatus;
+			// use the latest underlying source status, if available
+			return sourceStatus;
 		}
 
-		// assuming a successful call to the underlying provider always results
-		// in a healthy top-level provider. 
+		// assuming a successful call to the underlying source always results
+		// in a healthy top-level source. 
 		//
-		// If the last call to the underlying provider is not successful
-		// get the JWKs from the top level provider (without forcing a refresh)
+		// If the last call to the underlying source is not successful
+		// get the JWKs from the top level source (without forcing a refresh)
 		// so that the cache is refreshed if necessary, so an unhealthy status
 		// can turn to a healthy status just by checking the health
-		JWKSetHealth threadSafeStatus = this.providerStatus; // defensive copy
+		JWKSetHealth threadSafeStatus = this.sourceStatus; // defensive copy
 		if (threadSafeStatus == null || !threadSafeStatus.isSuccess()) {
 			// get a fresh status
 			JWKSet jwks = null;
 			try {
-				jwks = refreshProvider.getJWKSet(currentTime, false);
+				jwks = refreshSource.getJWKSet(currentTime, false);
 			} catch (Exception e) {
 				// ignore
 				LOGGER.log(Level.INFO, "Exception refreshing health status.", e);
@@ -117,8 +117,8 @@ public class DefaultHealthJWKSetProvider extends BaseJWKSetProvider {
 		return threadSafeStatus;
 	}
 
-	public void setRefreshProvider(JWKSetProvider top) {
-		this.refreshProvider = top;
+	public void setRefreshSource(JWKSetSource top) {
+		this.refreshSource = top;
 	}
 
 	@Override

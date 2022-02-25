@@ -31,7 +31,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Caching {@linkplain JWKSetProvider} which preemptively attempts to update the
+ * Caching {@linkplain JWKSetSource} which preemptively attempts to update the
  * cache in the background. The preemptive updates themselves run on a separate,
  * dedicated thread. Updates can be (eagerly) continuously scheduled, or (lazily)
  * triggered by incoming requests for JWKs. <br>
@@ -43,9 +43,9 @@ import java.util.logging.Logger;
  * <br>
  */
 
-public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider {
+public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 
-	private static final Logger LOGGER = Logger.getLogger(PreemptiveCachedJWKSetProvider.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(PreemptiveCachedJWKSetSource.class.getName());
 
 	// preemptive update should execute when
 	// expire - preemptiveRefresh < current time < expire.
@@ -66,7 +66,7 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 	/**
 	 * Construct new instance.
 	 *
-	 * @param provider		  JWKSet provider
+	 * @param source			JWK set source
 	 * @param timeToLive		cache hold time (in milliseconds)
 	 * @param refreshTimeout	cache refresh timeout unit (in milliseconds), i.e. before giving up
 	 * @param preemptiveRefresh preemptive timeout (in milliseconds). This parameter
@@ -76,27 +76,27 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 	 * @param eager			 preemptive refresh even if no traffic (schedule update)
 	 */
 
-	public PreemptiveCachedJWKSetProvider(JWKSetProvider provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
-		this(provider, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor(), true);
+	public PreemptiveCachedJWKSetSource(JWKSetSource source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
+		this(source, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor(), true);
 	}
 
 	/**
 	 * Construct new instance, use a custom executor service.
 	 *
-	 * @param provider				JWKSet provider
-	 * @param timeToLive			  cache hold time (in milliseconds)
-	 * @param refreshTimeout		  cache refresh timeout unit (in milliseconds), i.e. before giving up
-	 * @param preemptiveRefresh	   preemptive refresh limit (in milliseconds). This
+	 * @param source				JWK set source
+	 * @param timeToLive			cache hold time (in milliseconds)
+	 * @param refreshTimeout		cache refresh timeout unit (in milliseconds), i.e. before giving up
+	 * @param preemptiveRefresh	   	preemptive refresh limit (in milliseconds). This
 	 *								parameter is relative to time to live, i.e. "15000
 	 *								milliseconds before timeout, refresh time cached
 	 *								value".
-	 * @param eager				   preemptive refresh even if no traffic (schedule update)
-	 * @param executorService		 executor service
+	 * @param eager				   	preemptive refresh even if no traffic (schedule update)
+	 * @param executorService		executor service
 	 * @param shutdownExecutorOnClose Whether to shutdown the executor service on calls to close(..).
 	 */
 
-	public PreemptiveCachedJWKSetProvider(JWKSetProvider provider, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
-		super(provider, timeToLive, refreshTimeout);
+	public PreemptiveCachedJWKSetSource(JWKSetSource source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
+		super(source, timeToLive, refreshTimeout);
 
 		if (preemptiveRefresh + refreshTimeout > timeToLive) {
 			throw new IllegalArgumentException("Time to live (" + timeToLive/1000 + "s) must exceed preemptive refresh limit (" + preemptiveRefresh/1000 + "s) + the refresh timeout (" + refreshTimeout/1000 + "s) (as in the max duration of the refresh operation itself)");
@@ -125,9 +125,9 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 	}
 
 	@Override
-	protected JWKSetCacheItem loadJWKSetFromProvider(long currentTime) throws KeySourceException {
+	protected JWKSetCacheItem loadJWKSetFromSource(long currentTime) throws KeySourceException {
 		// note: never run by two threads at the same time
-		JWKSetCacheItem cache = super.loadJWKSetFromProvider(currentTime);
+		JWKSetCacheItem cache = super.loadJWKSetFromSource(currentTime);
 
 		if (scheduledExecutorService != null) {
 			schedulePreemptiveRefresh(currentTime, cache);
@@ -216,7 +216,7 @@ public class PreemptiveCachedJWKSetProvider extends DefaultCachedJWKSetProvider 
 				public void run() {
 					try {
 						LOGGER.info("Perform preemptive JWKs refresh");
-						PreemptiveCachedJWKSetProvider.this.getJwksBlocking(time);
+						PreemptiveCachedJWKSetSource.this.getJwksBlocking(time);
 
 						// so next time this method is invoked, it'll be with the updated cache item expiry time
 					} catch (Throwable e) {

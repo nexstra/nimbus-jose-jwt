@@ -24,29 +24,29 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This provider implements a workaround for transient network problems. <br>
+ * This JWK set source implements a workaround for transient network problems. <br>
  * <br>
- * It retries getting the list of Jwks if the wrapped provider throws a
+ * It retries getting the list of Jwks if the wrapped source throws a
  * {@linkplain JWKSetUnavailableException}.
  */
 
-public class RetryingJWKSetProvider extends BaseJWKSetProvider {
+public class RetryingJWKSetSource extends BaseJWKSetSource {
 
-	private static final Logger LOGGER = Logger.getLogger(RetryingJWKSetProvider.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(RetryingJWKSetSource.class.getName());
 
-	public RetryingJWKSetProvider(JWKSetProvider provider) {
-		super(provider);
+	public RetryingJWKSetSource(JWKSetSource source) {
+		super(source);
 	}
 
 	@Override
 	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
 		try {
-			return provider.getJWKSet(time, forceUpdate);
+			return source.getJWKSet(time, forceUpdate);
 		} catch (JWKSetUnavailableException e) {
 			// assume transient network issue, retry once
 			LOGGER.log(Level.WARNING, "Received exception getting JWKs, retrying once", e);
 
-			return provider.getJWKSet(time, forceUpdate);
+			return source.getJWKSet(time, forceUpdate);
 		}
 	}
 

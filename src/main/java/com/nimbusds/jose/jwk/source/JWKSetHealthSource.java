@@ -17,25 +17,24 @@
 
 package com.nimbusds.jose.jwk.source;
 
-import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.jwk.JWKSet;
-
-import java.io.Closeable;
-
-/**
- * Provider of a list of Jwk.
- */
-public interface JWKSetProvider extends JWKSetHealthProvider, Closeable {
+public interface JWKSetHealthSource {
 
 	/**
-	 * Get a set of JWKs.
-	 *
-	 * @param currentTime current time in milliseconds since 1970. 
-	 * @param forceUpdate if true, bypass existing caches if 
-	 *        the current cache is older than the passed currentTime parameter 
-	 * @return a set of JWKs
-	 * @throws KeySourceException if no list can be retrieved
+	 * Get JWK health.
+	 * 
+	 * @param refresh true if the source should refresh a missing or bad health
+	 *				status before returning.
+	 * @throws JWKSetHealthNotSupportedException if operation not supported
+	 * @return health status.
 	 */
-	JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException;
 
+	JWKSetHealth getHealth(boolean refresh);
+
+	/**
+	 * Check whether getting health is supported
+	 *
+	 * @return true if this source has support for getting health
+	 */
+
+	boolean supportsHealth();
 }

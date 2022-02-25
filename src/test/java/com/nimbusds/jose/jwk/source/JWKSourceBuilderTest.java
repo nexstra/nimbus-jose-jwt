@@ -34,28 +34,28 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
-public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
+public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateCachedProvider() {
 		JWKSource<?> provider = builder().rateLimited(false).cached(true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof JWKSetSource);
 	}
 
 	@Test
 	public void testShouldCreateCachedProviderWithCustomValues() {
 		JWKSource<?> provider = builder().rateLimited(false).cached(24 * 3600 * 1000, 15 * 1000).health(false).build();
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		DefaultCachedJWKSetProvider cachedJwksProvider = (DefaultCachedJWKSetProvider) jwksProviders.get(0);
+		DefaultCachedJWKSetSource cachedJwksProvider = (DefaultCachedJWKSetSource) jwksProviders.get(0);
 
 		assertEquals(cachedJwksProvider.getTimeToLive(), TimeUnit.HOURS.toMillis(24));
 	}
@@ -64,22 +64,22 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 	public void testShouldCreateRateLimitedProvider() {
 		JWKSource<?> provider = builder().rateLimited(true).build();
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetProvider);
+		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 	}
 
 	@Test
 	public void testShouldCreateRateLimitedProviderWithCustomValues() {
 		JWKSource<?> provider = builder().rateLimited(30 * 1000).build();
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		RateLimitedJWKSetProvider rateLimitedJwksProvider = (RateLimitedJWKSetProvider) jwksProviders.get(1);
+		RateLimitedJWKSetSource rateLimitedJwksProvider = (RateLimitedJWKSetSource) jwksProviders.get(1);
 
-		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetProvider);
+		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 	}
 
 	@Test
@@ -88,13 +88,13 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetProvider);
-		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetProvider);
-		assertTrue(jwksProviders.get(3) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
+		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
+		assertTrue(jwksProviders.get(3) instanceof JWKSetSource);
 	}
 
 	@Test
@@ -103,13 +103,13 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetProvider);
-		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetProvider);
-		assertTrue(jwksProviders.get(3) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
+		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
+		assertTrue(jwksProviders.get(3) instanceof JWKSetSource);
 	}
 
 	@Test
@@ -117,29 +117,29 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 		JWKSource<?> provider = builder().build();
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetProvider);
-		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetProvider);
-		assertTrue(jwksProviders.get(3) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
+		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
+		assertTrue(jwksProviders.get(3) instanceof JWKSetSource);
 	}
 
 	// peek into the jwk source and get the underlying set providers
-	private List<JWKSetProvider> jwksProviders(JWKSource jwkSource) {
+	private List<JWKSetSource> jwksProviders(JWKSource jwkSource) {
 		UrlJWKSource<?> remoteJWKSet = (UrlJWKSource<?>) jwkSource;
 
-		JWKSetProvider jwksProvider = remoteJWKSet.getProvider();
+		JWKSetSource jwksProvider = remoteJWKSet.getSource();
 
-		List<JWKSetProvider> list = new ArrayList<>();
+		List<JWKSetSource> list = new ArrayList<>();
 
 		list.add(jwksProvider);
 
-		while (jwksProvider instanceof BaseJWKSetProvider) {
-			BaseJWKSetProvider baseJwksProvider = (BaseJWKSetProvider) jwksProvider;
+		while (jwksProvider instanceof BaseJWKSetSource) {
+			BaseJWKSetSource baseJwksProvider = (BaseJWKSetSource) jwksProvider;
 
-			jwksProvider = baseJwksProvider.getProvider();
+			jwksProvider = baseJwksProvider.getSource();
 
 			list.add(jwksProvider);
 		}
@@ -152,11 +152,11 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 		JWKSource<?> provider = builder().rateLimited(false).cached(false).preemptiveCacheRefresh(false).retrying(true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof RetryingJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof RetryingJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof JWKSetSource);
 	}
 
 	@Test
@@ -164,21 +164,21 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 		JWKSource<?> provider = builder().rateLimited(false).cached(false).preemptiveCacheRefresh(false).outageCached(true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof OutageCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof OutageCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof JWKSetSource);
 	}
 
 	@Test
 	public void testShouldCreateOutageCachedProviderWithCustomValues() {
 		JWKSource<?> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(false).outageCached(24 * 3600 * 1000).build();
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		OutageCachedJWKSetProvider cachedJwksProvider = (OutageCachedJWKSetProvider) jwksProviders.get(0);
+		OutageCachedJWKSetSource cachedJwksProvider = (OutageCachedJWKSetSource) jwksProviders.get(0);
 
 		assertEquals(cachedJwksProvider.getTimeToLive(), TimeUnit.HOURS.toMillis(24));
 	}
@@ -189,25 +189,25 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(6, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetProvider);
-		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetProvider);
-		assertTrue(jwksProviders.get(3) instanceof OutageCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(4) instanceof RetryingJWKSetProvider);
-		assertTrue(jwksProviders.get(5) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
+		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
+		assertTrue(jwksProviders.get(3) instanceof OutageCachedJWKSetSource);
+		assertTrue(jwksProviders.get(4) instanceof RetryingJWKSetSource);
+		assertTrue(jwksProviders.get(5) instanceof JWKSetSource);
 	}
 
 	@Test
 	public void testShouldCreateWithCustomJwksProvider() {
-		JWKSetProvider customJwksProvider = mock(JWKSetProvider.class);
+		JWKSetSource customJwksProvider = mock(JWKSetSource.class);
 
 		@SuppressWarnings("unchecked")
 		JWKSource<?> provider = new JWKSourceBuilder<>(customJwksProvider).build();
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
 		assertSame(jwksProviders.get(jwksProviders.size() - 1), customJwksProvider);
@@ -218,11 +218,11 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 		JWKSource<?> provider = builder().rateLimited(false).preemptiveCacheRefresh(10 * 1000, true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof JWKSetSource);
 	}
 
 	@Test
@@ -241,11 +241,11 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 
 		assertNotNull(provider);
 
-		List<JWKSetProvider> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetProvider);
-		assertTrue(jwksProviders.get(1) instanceof JWKSetProvider);
+		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetSource);
+		assertTrue(jwksProviders.get(1) instanceof JWKSetSource);
 	}
 
 	@Test
@@ -254,9 +254,9 @@ public class JWKSourceBuilderTest extends AbstractDelegateProviderTest {
 		URL url = file.toURI().toURL();
 		JWKSource<SecurityContext> source = JWKSourceBuilder.newBuilder(url).build();
 		
-		List<JWKSetProvider> jwksProviders = jwksProviders(source);
+		List<JWKSetSource> jwksProviders = jwksProviders(source);
 
-		assertTrue(jwksProviders.get(jwksProviders.size() - 1) instanceof LocalUrlJWKSetProvider);
+		assertTrue(jwksProviders.get(jwksProviders.size() - 1) instanceof LocalUrlJWKSetSource);
 	}
 
 }

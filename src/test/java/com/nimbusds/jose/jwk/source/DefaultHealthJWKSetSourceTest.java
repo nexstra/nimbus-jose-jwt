@@ -33,16 +33,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
-public class DefaultHealthJWKSetProviderTest extends AbstractDelegateProviderTest {
+public class DefaultHealthJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private DefaultHealthJWKSetProvider provider;
-	private JWKSetProvider refreshProvider = mock(JWKSetProvider.class);
+	private DefaultHealthJWKSetSource provider;
+	private JWKSetSource refreshProvider = mock(JWKSetSource.class);
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new DefaultHealthJWKSetProvider(delegate);
-		provider.setRefreshProvider(refreshProvider);
+		provider = new DefaultHealthJWKSetSource(delegate);
+		provider.setRefreshSource(refreshProvider);
 		
 		when(refreshProvider.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
 		when(refreshProvider.getJWKSet(anyLong(), eq(true))).thenReturn(jwks);
