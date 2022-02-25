@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,27 +27,27 @@ import java.util.logging.Logger;
 /**
  * This JWK set source implements a workaround for transient network problems. <br>
  * <br>
- * It retries getting the list of Jwks if the wrapped source throws a
+ * It retries getting the list of JWKS if the wrapped source throws a
  * {@linkplain JWKSetUnavailableException}.
  */
 
-public class RetryingJWKSetSource extends BaseJWKSetSource {
+public class RetryingJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
 
 	private static final Logger LOGGER = Logger.getLogger(RetryingJWKSetSource.class.getName());
 
-	public RetryingJWKSetSource(JWKSetSource source) {
+	public RetryingJWKSetSource(JWKSetSource<C> source) {
 		super(source);
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long time, boolean forceUpdate, C context) throws KeySourceException {
 		try {
-			return source.getJWKSet(time, forceUpdate);
+			return source.getJWKSet(time, forceUpdate, context);
 		} catch (JWKSetUnavailableException e) {
 			// assume transient network issue, retry once
 			LOGGER.log(Level.WARNING, "Received exception getting JWKs, retrying once", e);
 
-			return source.getJWKSet(time, forceUpdate);
+			return source.getJWKSet(time, forceUpdate, context);
 		}
 	}
 

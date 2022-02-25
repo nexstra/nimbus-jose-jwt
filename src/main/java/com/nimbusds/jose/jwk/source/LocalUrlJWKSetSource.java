@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
+import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.IOUtils;
 import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jose.util.StandardCharset;
@@ -14,7 +15,7 @@ import com.nimbusds.jose.util.StandardCharset;
  * a user can manipulate a local file to emulate authorization server downtime and so on. 
  */
 
-public class LocalUrlJWKSetSource extends AbstractResourceJWKSetSource {
+public class LocalUrlJWKSetSource<C extends SecurityContext> extends AbstractResourceJWKSetSource<C> {
 
 	/**
 	 * Creates a JWK set source that loads from the given URL
@@ -26,7 +27,7 @@ public class LocalUrlJWKSetSource extends AbstractResourceJWKSetSource {
 	}
 
 	@Override
-	protected Resource getResource() throws JWKSetTransferException {
+	protected Resource getResource(C context) throws JWKSetTransferException {
 		try {
 			final URLConnection c = this.url.openConnection();
 			try (InputStream inputStream = c.getInputStream()) {

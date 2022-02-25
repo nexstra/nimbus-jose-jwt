@@ -18,6 +18,8 @@
 package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,44 +35,44 @@ import static org.mockito.Mockito.when;
 
 public class OutageCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private OutageCachedJWKSetSource provider;
+	private OutageCachedJWKSetSource<SecurityContext> provider;
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new OutageCachedJWKSetSource(delegate, 10 * 3600 * 1000);
+		provider = new OutageCachedJWKSetSource<>(delegate, 10 * 3600 * 1000);
 	}
 
 	@Test
 	public void testShouldUseDelegate() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
 	}
 
 	@Test
 	public void testShouldUseDelegateWhenCached() throws Exception {
 		JWKSet last = new JWKSet(Arrays.asList(jwk, jwk));
 
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks).thenReturn(last);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false), last);
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks).thenReturn(last);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), last);
 	}
 
 	@Test
 	public void testShouldUseCacheWhenDelegateSigningKeyUnavailable() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
-		provider.getJWKSet(System.currentTimeMillis(), false);
-		assertEquals(provider.getJWKSet(anyLong(), eq(false)), jwks);
-		verify(delegate, times(2)).getJWKSet(anyLong(), eq(false));
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
+		provider.getJWKSet(System.currentTimeMillis(), false, context);
+		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
+		verify(delegate, times(2)).getJWKSet(anyLong(), eq(false), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldNotUseExpiredCacheWhenDelegateSigningKeyUnavailable() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
-		provider.getJWKSet(System.currentTimeMillis(), false);
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
+		provider.getJWKSet(System.currentTimeMillis(), false, context);
 
 		try {
-			provider.getJWKSet(provider.getExpires(System.currentTimeMillis() + 1), false);
+			provider.getJWKSet(provider.getExpires(System.currentTimeMillis() + 1), false, context);
 			fail();
 		} catch(JWKSetUnavailableException e) {
 			// pass

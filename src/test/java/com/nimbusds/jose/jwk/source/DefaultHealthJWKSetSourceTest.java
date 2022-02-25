@@ -18,6 +18,8 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -35,115 +37,115 @@ import static org.mockito.Mockito.when;
 
 public class DefaultHealthJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private DefaultHealthJWKSetSource provider;
-	private JWKSetSource refreshProvider = mock(JWKSetSource.class);
+	private DefaultHealthJWKSetSource<SecurityContext> provider;
+	private JWKSetSource<SecurityContext> refreshProvider = mock(JWKSetSource.class);
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new DefaultHealthJWKSetSource(delegate);
+		provider = new DefaultHealthJWKSetSource<>(delegate);
 		provider.setRefreshSource(refreshProvider);
 		
-		when(refreshProvider.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
-		when(refreshProvider.getJWKSet(anyLong(), eq(true))).thenReturn(jwks);
+		when(refreshProvider.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
+		when(refreshProvider.getJWKSet(anyLong(), eq(true), anySecurityContext())).thenReturn(jwks);
 	}
 
 	@Test
 	public void testShouldReturnUnknownHealthIfNoPreviousStatusAndRefreshingIsNotAllowed() throws Exception {
-		JWKSetHealth health = provider.getHealth(false);
+		JWKSetHealth health = provider.getHealth(false, context);
 		assertNull(health);
 
 		// expected behavior: the health provider did not attempt to refresh status.
-		Mockito.verify(refreshProvider, times(0)).getJWKSet(anyLong(), eq(false));
-		Mockito.verify(delegate, times(0)).getJWKSet(anyLong(), eq(false));
+		Mockito.verify(refreshProvider, times(0)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		Mockito.verify(delegate, times(0)).getJWKSet(anyLong(), eq(false), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldReturnGoodHealth() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
 
 		// attempt to get access-token
-		provider.getJWKSet(System.currentTimeMillis(), false);
+		provider.getJWKSet(System.currentTimeMillis(), false, context);
 
-		JWKSetHealth health1 = provider.getHealth(true);
+		JWKSetHealth health1 = provider.getHealth(true, context);
 		assertTrue(health1.isSuccess());
 
-		JWKSetHealth health2 = provider.getHealth(false);
+		JWKSetHealth health2 = provider.getHealth(false, context);
 		assertSame(health1, health2);
 
 		// expected behavior: the health provider did not attempt to refresh
 		// a good health status.
-		Mockito.verify(delegate, times(1)).getJWKSet(anyLong(), eq(false));
-		Mockito.verify(refreshProvider, times(0)).getJWKSet(anyLong(), eq(false));
+		Mockito.verify(delegate, times(1)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		Mockito.verify(refreshProvider, times(0)).getJWKSet(anyLong(), eq(false), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldReturnGoodHealthIfJwksCouldBeRefreshedAfterBadStatus() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test"));
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenThrow(new KeySourceException("test"));
 
 		// attempt to get jwks
 		try {
-			JWKSet jwkSet = provider.getJWKSet(System.currentTimeMillis(), false);
+			JWKSet jwkSet = provider.getJWKSet(System.currentTimeMillis(), false, context);
 			assertTrue(jwkSet.isEmpty());
 			fail();
 		} catch (KeySourceException e) {
 			// pass
 		}
 
-		JWKSetHealth health = provider.getHealth(true);
+		JWKSetHealth health = provider.getHealth(true, context);
 		assertTrue(health.isSuccess());
 
 		// expected behavior: the health provider refreshed
 		// a bad health status.
-		Mockito.verify(delegate, times(1)).getJWKSet(anyLong(), eq(false));
-		Mockito.verify(refreshProvider, times(1)).getJWKSet(anyLong(), eq(false));
+		Mockito.verify(delegate, times(1)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		Mockito.verify(refreshProvider, times(1)).getJWKSet(anyLong(), eq(false), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldReturnBadHealthIfJwksCouldNotBeRefreshedAfterBadStatus() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test"));
-		when(refreshProvider.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test"));
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenThrow(new KeySourceException("test"));
+		when(refreshProvider.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenThrow(new KeySourceException("test"));
 
 		// attempt to get jwks
 		try {
-			provider.getJWKSet(System.currentTimeMillis(), false);
+			provider.getJWKSet(System.currentTimeMillis(), false, context);
 			fail();
 		} catch (KeySourceException e) {
 			// pass
 		}
 
-		JWKSetHealth health = provider.getHealth(true);
+		JWKSetHealth health = provider.getHealth(true, context);
 		assertFalse(health.isSuccess());
 
 		// expected behavior: the health provider refreshed
 		// a bad health status.
-		Mockito.verify(delegate, times(1)).getJWKSet(anyLong(), eq(false));
-		Mockito.verify(refreshProvider, times(1)).getJWKSet(anyLong(), eq(false));
+		Mockito.verify(delegate, times(1)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		Mockito.verify(refreshProvider, times(1)).getJWKSet(anyLong(), eq(false), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldRecoverFromBadHealth() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenThrow(new KeySourceException("test")) // fail
+		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenThrow(new KeySourceException("test")) // fail
 				.thenReturn(jwks); // recover
 
 		// attempt to get access-token
 		try {
-			provider.getJWKSet(System.currentTimeMillis(), false);
+			provider.getJWKSet(System.currentTimeMillis(), false, context);
 			fail();
 		} catch (KeySourceException e) {
 			// pass
 		}
 		
-		provider.getJWKSet(System.currentTimeMillis(), false);
+		provider.getJWKSet(System.currentTimeMillis(), false, context);
 
-		JWKSetHealth health1 = provider.getHealth(false);
+		JWKSetHealth health1 = provider.getHealth(false, context);
 		assertTrue(health1.isSuccess());
 		
-		JWKSetHealth health2 = provider.getHealth(true);
+		JWKSetHealth health2 = provider.getHealth(true, context);
 		assertSame(health1, health2);
 		
-		Mockito.verify(delegate, times(2)).getJWKSet(anyLong(), eq(false));
-		Mockito.verify(refreshProvider, times(0)).getJWKSet(anyLong(), eq(false));
+		Mockito.verify(delegate, times(2)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		Mockito.verify(refreshProvider, times(0)).getJWKSet(anyLong(), eq(false), anySecurityContext());
 	}	
 
 }

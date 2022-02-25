@@ -21,10 +21,14 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKMatcher;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.proc.SimpleSecurityContext;
+
 import org.junit.Before;
 
 import java.util.Arrays;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -34,7 +38,7 @@ public abstract class AbstractDelegateSourceTest {
 
 	protected static final String KID = "NkJCQzIyQzRBMEU4NjhGNUU4MzU4RkY0M0ZDQzkwOUQ0Q0VGNUMwQg";
 
-	protected JWKSetSource delegate;
+	protected JWKSetSource<SecurityContext> delegate;
 
 	protected JWK jwk;
 
@@ -43,7 +47,10 @@ public abstract class AbstractDelegateSourceTest {
 	protected JWKSelector aSelector = new JWKSelector(new JWKMatcher.Builder().keyID("a").build());
 	protected JWKSelector bSelector = new JWKSelector(new JWKMatcher.Builder().keyID("b").build());
 	protected JWKSelector cSelector = new JWKSelector(new JWKMatcher.Builder().keyID("c").build());
+	
+	protected SecurityContext context = new SimpleSecurityContext();
 
+	@SuppressWarnings("unchecked")
 	@Before
 	public void setUp() throws Exception {
 		delegate = mock(JWKSetSource.class);
@@ -51,10 +58,15 @@ public abstract class AbstractDelegateSourceTest {
 		when(jwk.getKeyID()).thenReturn(KID);
 		jwks = new JWKSet(Arrays.asList(jwk));
 
-		when(delegate.getJWKSet(anyLong(), eq(false))).thenReturn(jwks);
+		when(delegate.getJWKSet(anyLong(), eq(false), any(SecurityContext.class))).thenReturn(jwks);
 	}
 	
-	protected JWKSourceBuilder builder() {
-		return new JWKSourceBuilder(delegate);
-	}	
+	protected JWKSourceBuilder<SecurityContext> builder() {
+		return new JWKSourceBuilder<>(delegate);
+	}
+	
+	protected static SecurityContext anySecurityContext() {
+		return any(SecurityContext.class);
+	}
+
 }

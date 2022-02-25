@@ -27,6 +27,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.proc.SimpleSecurityContext;
 import com.nimbusds.jose.util.DefaultResourceRetriever;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jose.util.Resource;
@@ -123,7 +124,7 @@ public class UrlJWKSourceTest {
 				.withHeader("Content-Type", "application/json")
 				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
+		UrlJWKSource<SecurityContext> jwkSetSource = (UrlJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -134,8 +135,8 @@ public class UrlJWKSourceTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSetSource provider = jwkSetSource.getSource();
-		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false);
+		JWKSetSource<SecurityContext> provider = jwkSetSource.getSource();
+		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false, new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -161,7 +162,7 @@ public class UrlJWKSourceTest {
 		
 		DefaultResourceRetriever retriever = new DefaultResourceRetriever();
 
-		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL, retriever).build();
+		UrlJWKSource<SecurityContext> jwkSetSource = (UrlJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL, retriever).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -172,8 +173,8 @@ public class UrlJWKSourceTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSetSource provider = jwkSetSource.getSource();
-		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false);
+		JWKSetSource<SecurityContext> provider = jwkSetSource.getSource();
+		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false, new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -245,7 +246,7 @@ public class UrlJWKSourceTest {
 				}
 			});
 
-		UrlJWKSource<?> jwkSetSource = (UrlJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).rateLimited(0L).build();
+		UrlJWKSource<SecurityContext> jwkSetSource = (UrlJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL).rateLimited(0L).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -257,7 +258,7 @@ public class UrlJWKSourceTest {
 		assertEquals(1, matches.size());
 
 		// Check cache
-		JWKSet out = jwkSetSource.getSource().getJWKSet(System.currentTimeMillis(), false);
+		JWKSet out = jwkSetSource.getSource().getJWKSet(System.currentTimeMillis(), false, new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -289,9 +290,9 @@ public class UrlJWKSourceTest {
 				.respond()
 				.withStatus(404);
 
-		JWKSource failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, (JWK) RSA_JWK_2)));
+		JWKSource<SecurityContext> failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, (JWK) RSA_JWK_2)));
 
-		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
+		JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -326,9 +327,9 @@ public class UrlJWKSourceTest {
 				.withHeader("Content-Type", "application/json")
 				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		JWKSource failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
+		JWKSource<SecurityContext> failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
 
-		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
+		JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -359,12 +360,12 @@ public class UrlJWKSourceTest {
 				.respond()
 				.withStatus(404);
 
-		JWKSource failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
+		JWKSource<SecurityContext> failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
 
-		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
+		JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		try {
-			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
+			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), new SimpleSecurityContext());
 			fail();
 		} catch (KeySourceException e) {
 			assertEquals(
@@ -391,10 +392,10 @@ public class UrlJWKSourceTest {
 				.respond()
 				.withStatus(404);
 
-		JWKSource<?> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).build();
+		JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		try {
-			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
+			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), new SimpleSecurityContext());
 		} catch (JWKSetTransferException e) {
 			assertEquals("Couldn't retrieve remote JWK set: " + jwkSetURL, e.getMessage());
 			assertTrue(e.getCause() instanceof FileNotFoundException);
@@ -444,7 +445,7 @@ public class UrlJWKSourceTest {
 				.withHeader("Content-Type", "application/json")
 				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		JWKSource failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, RSA_JWK_2)));
+		JWKSource<SecurityContext> failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, RSA_JWK_2)));
 		FailoverJWKSource<?> jwkSetSource = (FailoverJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
@@ -539,23 +540,23 @@ public class UrlJWKSourceTest {
 		
 		final AtomicInteger invocationCounter = new AtomicInteger(0);
 
-		MutableJWKSetSource provider = new MutableJWKSetSource() {
+		MutableJWKSetSource<SecurityContext> mutableSource = new MutableJWKSetSource<SecurityContext>() {
 			@Override
-			public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+			public JWKSet getJWKSet(long time, boolean forceUpdate, SecurityContext context) throws KeySourceException {
 				invocationCounter.incrementAndGet();
-				return super.getJWKSet(time, forceUpdate);
+				return super.getJWKSet(time, forceUpdate, context);
 			}
 		};
 		
-		provider.setSet(jwkSetOld);
+		mutableSource.setSet(jwkSetOld);
 		
-		final JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(provider).rateLimited(false).build();
+		final JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(mutableSource).rateLimited(false).build();
 
 		// fill cache with old set
 		assertNotNull(jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID(rsaJWKOld.getKeyID()).build()), null));
 		assertEquals("Retriever must be called exactly once", 1, invocationCounter.intValue());
 
-		provider.setSet(jwkSetNew);
+		mutableSource.setSet(jwkSetNew);
 		
 		ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 		List<Future<List<JWK>>> futures = new ArrayList<>();

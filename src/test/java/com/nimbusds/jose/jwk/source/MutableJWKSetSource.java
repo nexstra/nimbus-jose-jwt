@@ -4,14 +4,15 @@ import java.io.IOException;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
-public class MutableJWKSetSource implements JWKSetSource {
+public class MutableJWKSetSource<C extends SecurityContext> implements JWKSetSource<C> {
 
 	private JWKSet set;
 	
 	@Override
-	public JWKSetHealth getHealth(boolean refresh) {
-		throw new JWKSetHealthNotSupportedException("Provider " + getClass().getName() + " does not support health requests");
+	public JWKSetHealth getHealth(boolean refresh, C context) {
+		throw new UnsupportedOperationException(getClass().getName() + " does not support health requests");
 	}
 
 	@Override
@@ -25,7 +26,7 @@ public class MutableJWKSetSource implements JWKSetSource {
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long time, boolean forceUpdate, C context) throws KeySourceException {
 		return set;
 	}
 

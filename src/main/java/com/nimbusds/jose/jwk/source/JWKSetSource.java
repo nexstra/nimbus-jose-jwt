@@ -19,13 +19,14 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 import java.io.Closeable;
 
 /**
  * Source of a set of JWK.
  */
-public interface JWKSetSource extends JWKSetHealthSource, Closeable {
+public interface JWKSetSource<C extends SecurityContext> extends JWKSetHealthSource<C>, Closeable {
 
 	/**
 	 * Get a set of JWKs.
@@ -33,9 +34,10 @@ public interface JWKSetSource extends JWKSetHealthSource, Closeable {
 	 * @param currentTime current time in milliseconds since 1970. 
 	 * @param forceUpdate if true, bypass existing caches if 
 	 *        the current cache is older than the passed currentTime parameter 
+	 * @param context TODO
 	 * @return a set of JWKs
 	 * @throws KeySourceException if no list can be retrieved
 	 */
-	JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException;
+	JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException;
 
 }

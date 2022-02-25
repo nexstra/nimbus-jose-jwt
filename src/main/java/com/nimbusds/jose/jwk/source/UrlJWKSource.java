@@ -33,11 +33,11 @@ import java.util.List;
  * JSON Web Key (JWK) source. 
  */
 @ThreadSafe
-public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Closeable, JWKSetHealthSource {
+public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Closeable, JWKSetHealthSource<C> {
 
-	private final JWKSetSource source;
+	private final JWKSetSource<C> source;
 
-	public UrlJWKSource(JWKSetSource source) {
+	public UrlJWKSource(JWKSetSource<C> source) {
 		super();
 		this.source = source;
 	}
@@ -60,9 +60,9 @@ public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Cl
 		// and used internally to check whether the cache is up to date; preventing
 		// unnecessary external calls
 		
-		List<JWK> select = jwkSelector.select(source.getJWKSet(time, false));
+		List<JWK> select = jwkSelector.select(source.getJWKSet(time, false, context));
 		if (select.isEmpty()) {
-			select = jwkSelector.select(source.getJWKSet(time, true));
+			select = jwkSelector.select(source.getJWKSet(time, true, context));
 		}
 		return select;
 	}
@@ -73,8 +73,8 @@ public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Cl
 	}
 
 	@Override
-	public JWKSetHealth getHealth(boolean refresh) {
-		return source.getHealth(refresh);
+	public JWKSetHealth getHealth(boolean refresh, C context) {
+		return source.getHealth(refresh, context);
 	}
 
 	@Override
@@ -83,7 +83,7 @@ public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Cl
 	}
 
 	// for testing
-	JWKSetSource getSource() {
+	JWKSetSource<C> getSource() {
 		return source;
 	}
 

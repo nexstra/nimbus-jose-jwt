@@ -34,32 +34,32 @@ import java.util.Objects;
 public class JWKSourceBuilder<C extends SecurityContext> {
 
 	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url, ResourceRetriever resourceRetriever) {
-		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetSource(url, resourceRetriever));
+		return new JWKSourceBuilder<>(new ResourceRetrieverJWKSetSource<C>(url, resourceRetriever));
 	}
 
 	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(URL url) {
-		JWKSetSource jwkSetSource;
+		JWKSetSource<C> jwkSetSource;
 		
 		String protocol = url.getProtocol();
 		if(Objects.equals(protocol, "file")) {
-			jwkSetSource = new LocalUrlJWKSetSource(url);
+			jwkSetSource = new LocalUrlJWKSetSource<>(url);
 		} else {
 			DefaultResourceRetriever jwkSetRetriever = new DefaultResourceRetriever(
 					RemoteJWKSet.DEFAULT_HTTP_CONNECT_TIMEOUT,
 					RemoteJWKSet.DEFAULT_HTTP_READ_TIMEOUT,
 					RemoteJWKSet.DEFAULT_HTTP_SIZE_LIMIT);
 			
-			jwkSetSource = new ResourceRetrieverJWKSetSource(url, jwkSetRetriever);
+			jwkSetSource = new ResourceRetrieverJWKSetSource<>(url, jwkSetRetriever);
 		}
 		return new JWKSourceBuilder<>(jwkSetSource);
 	}
 	
-	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(JWKSetSource source) {
+	public static <C extends SecurityContext> JWKSourceBuilder<C> newBuilder(JWKSetSource<C> source) {
 		return new JWKSourceBuilder<>(source);
 	}
 
 	// root source
-	protected final JWKSetSource jwkSetSource;
+	protected final JWKSetSource<C> jwkSetSource;
 
 	// cache
 	protected boolean cached = true;
@@ -95,7 +95,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	 * @param jwkSetSource root JWK set source
 	 */
 
-	JWKSourceBuilder(JWKSetSource jwkSetSource) {
+	JWKSourceBuilder(JWKSetSource<C> jwkSetSource) {
 		this.jwkSetSource = jwkSetSource;
 	}
 
@@ -205,8 +205,8 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		return this;
 	}
 
-	protected JWKSetSource getRateLimitedSource(JWKSetSource source) {
-		return new RateLimitedJWKSetSource(source, refillDuration);
+	protected JWKSetSource<C> getRateLimitedSource(JWKSetSource<C> source) {
+		return new RateLimitedJWKSetSource<>(source, refillDuration);
 	}
 
 	public JWKSourceBuilder<C> retrying(boolean retrying) {
@@ -270,7 +270,7 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	 * @return a newly created {@link JWKSource}
 	 */
 	public JWKSource<C> build() {
-		JWKSetSource source = jwkSetSource;
+		JWKSetSource<C> source = jwkSetSource;
 
 		if (!cached && rateLimited) {
 			throw new IllegalStateException("Ratelimiting configured without caching");
@@ -291,33 +291,32 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		}
 
 		if (retrying) {
-			source = new RetryingJWKSetSource(source);
+			source = new RetryingJWKSetSource<>(source);
 		}
 		
 		if (outageCached) {
 			if(outageCachedDuration == -1L) {
-				// TODO what is a sane default value here
 				if(cached) {
 					outageCachedDuration = cacheDuration * 10;
 				} else {
 					outageCachedDuration = 5 * 60 * 1000 * 10; 
 				}
 			}
-			source = new OutageCachedJWKSetSource(source, outageCachedDuration);
+			source = new OutageCachedJWKSetSource<>(source, outageCachedDuration);
 		}
 
-		DefaultHealthJWKSetSource healthSource = null;
+		DefaultHealthJWKSetSource<C> healthSource = null;
 		if (health) {
-			source = healthSource = new DefaultHealthJWKSetSource(source);
+			source = healthSource = new DefaultHealthJWKSetSource<>(source);
 		}
 
 		if (rateLimited) {
 			source = getRateLimitedSource(source);
 		}
 		if (preemptiveRefresh) {
-			source = new PreemptiveCachedJWKSetSource(source, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshEager);
+			source = new PreemptiveCachedJWKSetSource<>(source, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshEager);
 		} else if (cached) {
-			source = new DefaultCachedJWKSetSource(source, cacheDuration, cacheRefreshTimeoutDuration);
+			source = new DefaultCachedJWKSetSource<>(source, cacheDuration, cacheRefreshTimeoutDuration);
 		}
 		if (health) {
 			// set the top level on the health source, for refreshing from the top.

@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
 
 import java.io.IOException;
@@ -29,7 +30,7 @@ import java.util.logging.Logger;
  * Abstract superclass for {@linkplain JWKSetSource} getting its data from an URL.
  */
 
-public abstract class AbstractResourceJWKSetSource implements JWKSetSource {
+public abstract class AbstractResourceJWKSetSource<C extends SecurityContext> implements JWKSetSource<C> {
 
 	private static final Logger LOGGER = Logger.getLogger(AbstractResourceJWKSetSource.class.getName());
 
@@ -53,10 +54,10 @@ public abstract class AbstractResourceJWKSetSource implements JWKSetSource {
 		}
 	}
 
-	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException {
 		LOGGER.info("Requesting JWKs from " + url + "..");
 
-		Resource res = getResource();
+		Resource res = getResource(context);
 		try {
 			// Note on error handling: We want to avoid any generic HTML document 
 			// (i.e. default HTTP error pages) and other invalid responses being accepted 
@@ -87,8 +88,8 @@ public abstract class AbstractResourceJWKSetSource implements JWKSetSource {
 		// do nothing
 	}
 
-	public JWKSetHealth getHealth(boolean refresh) {
-		throw new JWKSetHealthNotSupportedException(getClass().getName() + " does not support health requests");
+	public JWKSetHealth getHealth(boolean refresh, C context) {
+		throw new UnsupportedOperationException(getClass().getName() + " does not support health requests");
 	}
 
 	@Override
@@ -96,7 +97,7 @@ public abstract class AbstractResourceJWKSetSource implements JWKSetSource {
 		return false;
 	}
 
-	protected abstract Resource getResource() throws JWKSetTransferException;
+	protected abstract Resource getResource(C context) throws JWKSetTransferException;
 
 
 }

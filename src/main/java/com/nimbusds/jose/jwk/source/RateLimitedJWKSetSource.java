@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 
 /**
@@ -35,7 +36,7 @@ import com.nimbusds.jose.jwk.JWKSet;
  * The other request is (sometimes) consumed by background refreshes. 
  */
 
-public class RateLimitedJWKSetSource extends BaseJWKSetSource {
+public class RateLimitedJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
 
 	// interval duration
 	private final long duration;
@@ -48,13 +49,13 @@ public class RateLimitedJWKSetSource extends BaseJWKSetSource {
 	 * @param duration minimum number of milliseconds per two downstream requests.
 	 * @param source			   source to request JWK sets from when the rate limit allows it.
 	 */
-	public RateLimitedJWKSetSource(JWKSetSource source, long duration) {
+	public RateLimitedJWKSetSource(JWKSetSource<C> source, long duration) {
 		super(source);
 		this.duration = duration;
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long time, boolean forceUpdate, C context) throws KeySourceException {
 		
 		// implementation note: this code is not intended to run many parallel threads
 		// for the same instance, thus use of synchronized will not cause congestion
@@ -69,7 +70,7 @@ public class RateLimitedJWKSetSource extends BaseJWKSetSource {
 				counter--;
 			}
 		}
-		return source.getJWKSet(time, forceUpdate);
+		return source.getJWKSet(time, forceUpdate, context);
 	}
 
 }

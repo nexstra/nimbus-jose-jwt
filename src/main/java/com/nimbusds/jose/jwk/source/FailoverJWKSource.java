@@ -31,13 +31,13 @@ import java.io.Closeable;
 import java.util.List;
 
 @ThreadSafe
-public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthSource, Closeable {
+public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthSource<C>, Closeable {
 
 	private final JWKSource<C> failoverJWKSource;
 	private final JWKSource<C> jwkSource;
 
-	private final JWKSetHealthSource jwkSourcehHealthSource;
-	private final JWKSetHealthSource failoverJWKSourcehHealthSource;
+	private final JWKSetHealthSource<C> jwkSourcehHealthSource;
+	private final JWKSetHealthSource<C> failoverJWKSourcehHealthSource;
 
 	/**
 	 * Creates a new remote JWK set using a failover.
@@ -50,26 +50,19 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 		this.jwkSource = jwkSource;
 		this.failoverJWKSource = failoverJWKSource;
 
-		if (supportsHealth(jwkSource)) {
-			jwkSourcehHealthSource = (JWKSetHealthSource) jwkSource;
-		} else {
-			jwkSourcehHealthSource = null;
-		}
-
-		if (supportsHealth(failoverJWKSource)) {
-			failoverJWKSourcehHealthSource = (JWKSetHealthSource) failoverJWKSource;
-		} else {
-			failoverJWKSourcehHealthSource = null;
-		}
-
+		this.jwkSourcehHealthSource = toHealth(jwkSource);
+		this.failoverJWKSourcehHealthSource = toHealth(failoverJWKSource);
 	}
 
-	private boolean supportsHealth(JWKSource<C> source) {
+	@SuppressWarnings("unchecked")
+	private JWKSetHealthSource<C> toHealth(JWKSource<C> source) {
 		if (source instanceof JWKSetHealthSource) {
-			JWKSetHealthSource jwkSetHealthSource = (JWKSetHealthSource) source;
-			return jwkSetHealthSource.supportsHealth();
+			JWKSetHealthSource<C> jwkSetHealthSource = (JWKSetHealthSource<C>) source;
+			if(jwkSetHealthSource.supportsHealth()) {
+				return jwkSetHealthSource;
+			}
 		}
-		return false;
+		return null;
 	}
 
 	/**
@@ -82,9 +75,7 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 			return failoverJWKSource.get(jwkSelector, context);
 		} catch (KeySourceException kse) {
 			throw new RemoteKeySourceException(
-					exception.getMessage() +
-							"; Failover JWK source retrieval failed with: " + kse.getMessage(),
-					kse
+				exception.getMessage() + "; Failover JWK source retrieval failed with: " + kse.getMessage(), kse
 			);
 		}
 	}
@@ -110,22 +101,21 @@ public class FailoverJWKSource<C extends SecurityContext> implements JWKSource<C
 		}
 	}
 
-
 	@Override
-	public JWKSetHealth getHealth(boolean refresh) {
+	public JWKSetHealth getHealth(boolean refresh, C context) {
 		JWKSetHealth health = null;
 		if (jwkSourcehHealthSource != null) {
-			health = jwkSourcehHealthSource.getHealth(refresh);
+			health = jwkSourcehHealthSource.getHealth(refresh, context);
 		}
 		if (health == null || !health.isSuccess()) {
 			if (failoverJWKSourcehHealthSource != null) {
-				health = failoverJWKSourcehHealthSource.getHealth(refresh);
+				health = failoverJWKSourcehHealthSource.getHealth(refresh, context);
 			}
 		}
 		if (health == null) {
-			throw new JWKSetHealthNotSupportedException("Health requests not supported");
+			throw new UnsupportedOperationException("Health requests not supported");
 		}
-		return null;
+		return health;
 	}
 
 	@Override

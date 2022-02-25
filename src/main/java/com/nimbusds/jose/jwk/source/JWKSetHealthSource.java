@@ -17,18 +17,21 @@
 
 package com.nimbusds.jose.jwk.source;
 
-public interface JWKSetHealthSource {
+import com.nimbusds.jose.proc.SecurityContext;
+
+public interface JWKSetHealthSource<C extends SecurityContext> {
 
 	/**
 	 * Get JWK health.
 	 * 
 	 * @param refresh true if the source should refresh a missing or bad health
 	 *				status before returning.
-	 * @throws JWKSetHealthNotSupportedException if operation not supported
+	 * @param context TODO
+	 * @throws UnsupportedOperationException if operation not supported
 	 * @return health status.
 	 */
 
-	JWKSetHealth getHealth(boolean refresh);
+	JWKSetHealth getHealth(boolean refresh, C context);
 
 	/**
 	 * Check whether getting health is supported

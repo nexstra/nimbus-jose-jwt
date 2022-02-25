@@ -34,7 +34,7 @@ import net.jcip.annotations.Immutable;
  * @version 2016-04-10
  */
 @Immutable
-public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C> {
+public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthSource<C> {
 
 
 	/**
@@ -73,5 +73,17 @@ public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C> 
 	public List<JWK> get(final JWKSelector jwkSelector, final C context) {
 
 		return jwkSelector.select(jwkSet);
+	}
+
+
+	@Override
+	public JWKSetHealth getHealth(boolean refresh, C context) {
+		return new JWKSetHealth(System.currentTimeMillis(), true);
+	}
+
+
+	@Override
+	public boolean supportsHealth() {
+		return true;
 	}
 }

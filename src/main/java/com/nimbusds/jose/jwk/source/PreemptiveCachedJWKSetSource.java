@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +44,7 @@ import java.util.logging.Logger;
  * <br>
  */
 
-public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
+public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends DefaultCachedJWKSetSource<C> {
 
 	private static final Logger LOGGER = Logger.getLogger(PreemptiveCachedJWKSetSource.class.getName());
 
@@ -76,7 +77,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 	 * @param eager			 preemptive refresh even if no traffic (schedule update)
 	 */
 
-	public PreemptiveCachedJWKSetSource(JWKSetSource source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
+	public PreemptiveCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
 		this(source, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor(), true);
 	}
 
@@ -95,7 +96,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 	 * @param shutdownExecutorOnClose Whether to shutdown the executor service on calls to close(..).
 	 */
 
-	public PreemptiveCachedJWKSetSource(JWKSetSource source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
+	public PreemptiveCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
 		super(source, timeToLive, refreshTimeout);
 
 		if (preemptiveRefresh + refreshTimeout > timeToLive) {
@@ -114,29 +115,29 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 	}
 
 	@Override
-	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException {
 		JWKSetCacheItem cache = this.cache;
 		if (cache == null || (forceUpdate && cache.getTimestamp() < currentTime) || !cache.isValid(currentTime)) {
-			return super.getJwksBlocking(currentTime).getValue();
+			return super.getJwksBlocking(currentTime, context).getValue();
 		}
-		preemptiveRefresh(currentTime, cache, false);
+		preemptiveRefresh(currentTime, cache, false, context);
 
 		return cache.getValue();
 	}
 
 	@Override
-	protected JWKSetCacheItem loadJWKSetFromSource(long currentTime) throws KeySourceException {
+	protected JWKSetCacheItem loadJWKSetFromSource(long currentTime, C context) throws KeySourceException {
 		// note: never run by two threads at the same time
-		JWKSetCacheItem cache = super.loadJWKSetFromSource(currentTime);
+		JWKSetCacheItem cache = super.loadJWKSetFromSource(currentTime, context);
 
 		if (scheduledExecutorService != null) {
-			schedulePreemptiveRefresh(currentTime, cache);
+			schedulePreemptiveRefresh(currentTime, cache, context);
 		}
 
 		return cache;
 	}
 
-	protected void schedulePreemptiveRefresh(long currentTime, final JWKSetCacheItem cache) {
+	protected void schedulePreemptiveRefresh(long currentTime, final JWKSetCacheItem cache, final C context) {
 		if (eagerScheduledFuture != null) {
 			eagerScheduledFuture.cancel(false);
 		}
@@ -151,7 +152,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 				public void run() {
 					try {
 						// so will only refresh if this specific cache entry still is the current one
-						preemptiveRefresh(System.currentTimeMillis(), cache, true);
+						preemptiveRefresh(System.currentTimeMillis(), cache, true, context);
 					} catch (Exception e) {
 						LOGGER.log(Level.WARNING, "Scheduled eager JWKs refresh failed", e);
 					}
@@ -176,7 +177,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 	 * @param cache current cache (non-null)
 	 */
 
-	protected void preemptiveRefresh(final long time, final JWKSetCacheItem cache, boolean forceRefresh) {
+	protected void preemptiveRefresh(final long time, final JWKSetCacheItem cache, boolean forceRefresh, C context) {
 		if (!cache.isValid(time + preemptiveRefresh) || forceRefresh) {
 			// cache will expire soon,
 			// preemptively update it
@@ -186,7 +187,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 				// seems no update is in progress, see if we can get the lock
 				if (lazyLock.tryLock()) {
 					try {
-						lockedPreemptiveRefresh(time, cache);
+						lockedPreemptiveRefresh(time, cache, context);
 					} finally {
 						lazyLock.unlock();
 					}
@@ -203,7 +204,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 	 * @param cache current cache
 	 */
 
-	protected void lockedPreemptiveRefresh(final long time, final JWKSetCacheItem cache) {
+	protected void lockedPreemptiveRefresh(final long time, final JWKSetCacheItem cache, final C context) {
 		// check if an update is already in progress (again now that this thread holds the lock)
 		if (cacheExpires < cache.getExpires()) {
 
@@ -216,7 +217,7 @@ public class PreemptiveCachedJWKSetSource extends DefaultCachedJWKSetSource {
 				public void run() {
 					try {
 						LOGGER.info("Perform preemptive JWKs refresh");
-						PreemptiveCachedJWKSetSource.this.getJwksBlocking(time);
+						PreemptiveCachedJWKSetSource.this.getJwksBlocking(time, context);
 
 						// so next time this method is invoked, it'll be with the updated cache item expiry time
 					} catch (Throwable e) {

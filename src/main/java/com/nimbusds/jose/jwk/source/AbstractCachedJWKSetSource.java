@@ -18,12 +18,13 @@
 package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 /**
  * JWK set source that caches previously obtained list of JWK in memory.
  */
 
-public abstract class AbstractCachedJWKSetSource extends BaseJWKSetSource {
+public abstract class AbstractCachedJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
 
 	protected static class JWKSetCacheItem {
 
@@ -60,7 +61,7 @@ public abstract class AbstractCachedJWKSetSource extends BaseJWKSetSource {
 	protected volatile JWKSetCacheItem cache;
 	protected final long timeToLive; // milliseconds
 
-	public AbstractCachedJWKSetSource(JWKSetSource source, long timeToLive) {
+	public AbstractCachedJWKSetSource(JWKSetSource<C> source, long timeToLive) {
 		super(source);
 		this.timeToLive = timeToLive;
 	}

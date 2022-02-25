@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,20 +34,20 @@ import java.util.logging.Logger;
  * {@linkplain JWKSetUnavailableException}.
  */
 
-public class OutageCachedJWKSetSource extends AbstractCachedJWKSetSource {
+public class OutageCachedJWKSetSource<C extends SecurityContext> extends AbstractCachedJWKSetSource<C> {
 
 	private static final Logger LOGGER = Logger.getLogger(OutageCachedJWKSetSource.class.getName());
 
-	public OutageCachedJWKSetSource(JWKSetSource delegate, long duration) {
+	public OutageCachedJWKSetSource(JWKSetSource<C> delegate, long duration) {
 		super(delegate, duration);
 	}
 
 	@Override
-	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException {
 		try {
 			// cache value, if successfully refreshed by underlying source
 
-			JWKSet all = source.getJWKSet(currentTime, forceUpdate);
+			JWKSet all = source.getJWKSet(currentTime, forceUpdate, context);
 
 			this.cache = createJWKSetCacheItem(all, currentTime);
 

@@ -19,21 +19,23 @@ package com.nimbusds.jose.jwk.source;
 
 import java.io.IOException;
 
-public abstract class BaseJWKSetSource implements JWKSetSource {
+import com.nimbusds.jose.proc.SecurityContext;
 
-	protected final JWKSetSource source;
+public abstract class BaseJWKSetSource<C extends SecurityContext> implements JWKSetSource<C> {
 
-	public BaseJWKSetSource(JWKSetSource source) {
+	protected final JWKSetSource<C> source;
+
+	public BaseJWKSetSource(JWKSetSource<C> source) {
 		this.source = source;
 	}
 
-	public JWKSetSource getSource() {
+	public JWKSetSource<C> getSource() {
 		return source;
 	}
 
 	@Override
-	public JWKSetHealth getHealth(boolean refresh) {
-		return source.getHealth(refresh);
+	public JWKSetHealth getHealth(boolean refresh, C context) {
+		return source.getHealth(refresh, context);
 	}
 	
 	@Override

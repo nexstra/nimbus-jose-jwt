@@ -20,6 +20,7 @@ package com.nimbusds.jose.jwk.source;
 import java.io.IOException;
 import java.net.URL;
 
+import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jose.util.ResourceRetriever;
 
@@ -27,7 +28,7 @@ import com.nimbusds.jose.util.ResourceRetriever;
  * JWK set source that loads from a {@link URL}
  */
 
-public class ResourceRetrieverJWKSetSource extends AbstractResourceJWKSetSource {
+public class ResourceRetrieverJWKSetSource<C extends SecurityContext> extends AbstractResourceJWKSetSource<C> {
 
 	private final ResourceRetriever resourceRetriever;
 
@@ -45,7 +46,7 @@ public class ResourceRetrieverJWKSetSource extends AbstractResourceJWKSetSource 
 	}
 
 	@Override
-	protected Resource getResource() throws JWKSetTransferException {
+	protected Resource getResource(C context) throws JWKSetTransferException {
 		try {
 			return resourceRetriever.retrieveResource(url);
 		} catch (IOException e) {

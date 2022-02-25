@@ -38,10 +38,10 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateCachedProvider() {
-		JWKSource<?> provider = builder().rateLimited(false).cached(true).health(false).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).cached(true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
@@ -50,21 +50,21 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateCachedProviderWithCustomValues() {
-		JWKSource<?> provider = builder().rateLimited(false).cached(24 * 3600 * 1000, 15 * 1000).health(false).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).cached(24 * 3600 * 1000, 15 * 1000).health(false).build();
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		DefaultCachedJWKSetSource cachedJwksProvider = (DefaultCachedJWKSetSource) jwksProviders.get(0);
+		DefaultCachedJWKSetSource<SecurityContext> cachedJwksProvider = (DefaultCachedJWKSetSource<SecurityContext>) jwksProviders.get(0);
 
 		assertEquals(cachedJwksProvider.getTimeToLive(), TimeUnit.HOURS.toMillis(24));
 	}
 
 	@Test
 	public void testShouldCreateRateLimitedProvider() {
-		JWKSource<?> provider = builder().rateLimited(true).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(true).build();
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
@@ -72,23 +72,21 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateRateLimitedProviderWithCustomValues() {
-		JWKSource<?> provider = builder().rateLimited(30 * 1000).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(30 * 1000).build();
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
-
-		RateLimitedJWKSetSource rateLimitedJwksProvider = (RateLimitedJWKSetSource) jwksProviders.get(1);
 
 		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 	}
 
 	@Test
 	public void testShouldCreateCachedAndRateLimitedProvider() {
-		JWKSource<?> provider = builder().cached(true).rateLimited(true).build();
+		JWKSource<SecurityContext> provider = builder().cached(true).rateLimited(true).build();
 
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
@@ -99,11 +97,11 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateCachedAndRateLimitedProviderWithCustomValues() {
-		JWKSource<?> provider = builder().cached(24 * 3600 * 1000, 15 * 1000).rateLimited(30 * 1000).build();
+		JWKSource<SecurityContext> provider = builder().cached(24 * 3600 * 1000, 15 * 1000).rateLimited(30 * 1000).build();
 
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
@@ -114,10 +112,10 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateCachedAndRateLimitedProviderByDefault() {
-		JWKSource<?> provider = builder().build();
+		JWKSource<SecurityContext> provider = builder().build();
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
@@ -127,17 +125,18 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 	}
 
 	// peek into the jwk source and get the underlying set providers
-	private List<JWKSetSource> jwksProviders(JWKSource jwkSource) {
-		UrlJWKSource<?> remoteJWKSet = (UrlJWKSource<?>) jwkSource;
+	@SuppressWarnings("resource")
+	private List<JWKSetSource<SecurityContext>> jwksProviders(JWKSource<SecurityContext> jwkSource) {
+		UrlJWKSource<SecurityContext> remoteJWKSet = (UrlJWKSource<SecurityContext>) jwkSource;
 
-		JWKSetSource jwksProvider = remoteJWKSet.getSource();
+		JWKSetSource<SecurityContext> jwksProvider = remoteJWKSet.getSource();
 
-		List<JWKSetSource> list = new ArrayList<>();
+		List<JWKSetSource<SecurityContext>> list = new ArrayList<>();
 
 		list.add(jwksProvider);
 
 		while (jwksProvider instanceof BaseJWKSetSource) {
-			BaseJWKSetSource baseJwksProvider = (BaseJWKSetSource) jwksProvider;
+			BaseJWKSetSource<SecurityContext> baseJwksProvider = (BaseJWKSetSource<SecurityContext>) jwksProvider;
 
 			jwksProvider = baseJwksProvider.getSource();
 
@@ -149,10 +148,10 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateRetryingProvider() {
-		JWKSource<?> provider = builder().rateLimited(false).cached(false).preemptiveCacheRefresh(false).retrying(true).health(false).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).cached(false).preemptiveCacheRefresh(false).retrying(true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof RetryingJWKSetSource);
@@ -161,10 +160,10 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateOutageCachedProvider() {
-		JWKSource<?> provider = builder().rateLimited(false).cached(false).preemptiveCacheRefresh(false).outageCached(true).health(false).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).cached(false).preemptiveCacheRefresh(false).outageCached(true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof OutageCachedJWKSetSource);
@@ -173,23 +172,23 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateOutageCachedProviderWithCustomValues() {
-		JWKSource<?> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(false).outageCached(24 * 3600 * 1000).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(false).outageCached(24 * 3600 * 1000).build();
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		OutageCachedJWKSetSource cachedJwksProvider = (OutageCachedJWKSetSource) jwksProviders.get(0);
+		OutageCachedJWKSetSource<SecurityContext> cachedJwksProvider = (OutageCachedJWKSetSource<SecurityContext>) jwksProviders.get(0);
 
 		assertEquals(cachedJwksProvider.getTimeToLive(), TimeUnit.HOURS.toMillis(24));
 	}
 
 	@Test
 	public void testShouldCreateCachedAndRateLimitedAndOutageAndRetryingProvider() {
-		JWKSource<?> provider = builder().cached(true).rateLimited(true).retrying(true).outageCached(true).health(true).build();
+		JWKSource<SecurityContext> provider = builder().cached(true).rateLimited(true).retrying(true).outageCached(true).health(true).build();
 
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(6, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
@@ -202,12 +201,12 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreateWithCustomJwksProvider() {
-		JWKSetSource customJwksProvider = mock(JWKSetSource.class);
+		JWKSetSource<SecurityContext> customJwksProvider = mock(JWKSetSource.class);
 
 		@SuppressWarnings("unchecked")
-		JWKSource<?> provider = new JWKSourceBuilder<>(customJwksProvider).build();
+		JWKSource<SecurityContext> provider = new JWKSourceBuilder<>(customJwksProvider).build();
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
 		assertSame(jwksProviders.get(jwksProviders.size() - 1), customJwksProvider);
@@ -215,10 +214,10 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldCreatePreemptiveCachedProvider() {
-		JWKSource<?> provider = builder().rateLimited(false).preemptiveCacheRefresh(10 * 1000, true).health(false).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).preemptiveCacheRefresh(10 * 1000, true).health(false).build();
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetSource);
@@ -237,11 +236,11 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 
 	@Test
 	public void testShouldEnableCacheWhenPreemptiveCaching() {
-		JWKSource<?> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(true).build();
+		JWKSource<SecurityContext> provider = builder().rateLimited(false).cached(false).health(false).preemptiveCacheRefresh(true).build();
 
 		assertNotNull(provider);
 
-		List<JWKSetSource> jwksProviders = jwksProviders(provider);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
 		assertTrue(jwksProviders.get(0) instanceof PreemptiveCachedJWKSetSource);
@@ -254,7 +253,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		URL url = file.toURI().toURL();
 		JWKSource<SecurityContext> source = JWKSourceBuilder.newBuilder(url).build();
 		
-		List<JWKSetSource> jwksProviders = jwksProviders(source);
+		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(source);
 
 		assertTrue(jwksProviders.get(jwksProviders.size() - 1) instanceof LocalUrlJWKSetSource);
 	}

@@ -19,6 +19,7 @@ package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +39,7 @@ import java.util.logging.Logger;
  * underlying source was successful. 
  */
 
-public class DefaultHealthJWKSetSource extends BaseJWKSetSource {
+public class DefaultHealthJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
 
 	private static final Logger LOGGER = Logger.getLogger(DefaultHealthJWKSetSource.class.getName());
 
@@ -52,17 +53,17 @@ public class DefaultHealthJWKSetSource extends BaseJWKSetSource {
 	 * Source to invoke when refreshing state. This should be the top level
 	 * source, so that caches are actually populated and so on.
 	 */
-	private JWKSetSource refreshSource;
+	private JWKSetSource<C> refreshSource;
 
-	public DefaultHealthJWKSetSource(JWKSetSource source) {
+	public DefaultHealthJWKSetSource(JWKSetSource<C> source) {
 		super(source);
 	}
 
 	@Override
-	public JWKSet getJWKSet(long currentTime, boolean forceUpdate) throws KeySourceException {
+	public JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException {
 		JWKSet list = null;
 		try {
-			list = source.getJWKSet(currentTime, forceUpdate);
+			list = source.getJWKSet(currentTime, forceUpdate, context);
 		} finally {
 			setSourceStatus(new JWKSetHealth(currentTime, list != null));
 		}
@@ -75,11 +76,11 @@ public class DefaultHealthJWKSetSource extends BaseJWKSetSource {
 	}
 
 	@Override
-	public JWKSetHealth getHealth(boolean refresh) {
-		return getHealth(System.currentTimeMillis(), refresh);
+	public JWKSetHealth getHealth(boolean refresh, C context) {
+		return getHealth(System.currentTimeMillis(), refresh, context);
 	}
 
-	protected JWKSetHealth getHealth(long currentTime, boolean refresh) {
+	protected JWKSetHealth getHealth(long currentTime, boolean refresh, C context) {
 		if(!refresh) {
 			JWKSetHealth threadSafeStatus = this.status; // defensive copy
 			if(threadSafeStatus != null) {
@@ -102,7 +103,7 @@ public class DefaultHealthJWKSetSource extends BaseJWKSetSource {
 			// get a fresh status
 			JWKSet jwks = null;
 			try {
-				jwks = refreshSource.getJWKSet(currentTime, false);
+				jwks = refreshSource.getJWKSet(currentTime, false, context);
 			} catch (Exception e) {
 				// ignore
 				LOGGER.log(Level.INFO, "Exception refreshing health status.", e);
@@ -117,7 +118,7 @@ public class DefaultHealthJWKSetSource extends BaseJWKSetSource {
 		return threadSafeStatus;
 	}
 
-	public void setRefreshSource(JWKSetSource top) {
+	public void setRefreshSource(JWKSetSource<C> top) {
 		this.refreshSource = top;
 	}
 
