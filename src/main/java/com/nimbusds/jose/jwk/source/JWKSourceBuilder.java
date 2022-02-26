@@ -17,12 +17,15 @@
 
 package com.nimbusds.jose.jwk.source;
 
+import com.nimbusds.jose.jwk.source.OutageCachedJWKSetSource.Listener;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.DefaultResourceRetriever;
 import com.nimbusds.jose.util.ResourceRetriever;
 
 import java.net.URL;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * {@linkplain JWKSource} builder
@@ -65,26 +68,32 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	protected boolean cached = true;
 	protected long cacheDuration = 5 * 60 * 1000;
 	protected long cacheRefreshTimeoutDuration = 15 * 1000;
+	protected CachedJWKSetSource.Listener<C> cachedJWKSetSourceListener;
 
 	protected boolean preemptiveRefresh = true;
 	protected long preemptiveRefreshDuration = 30 * 1000;
 	protected boolean preemptiveRefreshEager = false;
+	protected PreemptiveCachedJWKSetSource.Listener<C> preemptiveCachedJWKSetSourceListener;
 
 	// rate limiting
 	// Max two requests for every refill duration
 	// (retry on network error will not count against this)
 	protected boolean rateLimited = true;
 	protected long refillDuration = 30 * 1000;
+	protected RateLimitedJWKSetSource.Listener<C> rateLimitedJWKSetSourceListener;
 
 	// retrying
 	protected boolean retrying = false;
+	protected RetryingJWKSetSource.Listener<C> retryingJWKSetSourceListener;
 
 	// outage
 	protected boolean outageCached = false;
 	protected long outageCachedDuration = -1L;
+	protected OutageCachedJWKSetSource.Listener<C> outageCachedJWKSetSourceListener;
 
 	// health indicator support
 	protected boolean health = true;
+	protected JWKSetHealthSourceListener<C> jwkSetHealthSourceListener;
 
 	protected JWKSource<C> failover;
 
@@ -109,6 +118,19 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.cached = cached;
 		return this;
 	}
+	
+	/**
+	 * Toggle the cache of JWK. By default the source will use cache.
+	 *
+	 * @param cached if the source should cache jwks
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> cached(boolean cached, CachedJWKSetSource.Listener<C> listener) {
+		this.cached = cached;
+		this.cachedJWKSetSourceListener = listener;
+		return this;
+	}
+
 
 	/**
 	 * Enable the cache specifying size, expire time and maximum wait time for cache
@@ -125,11 +147,29 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.cacheRefreshTimeoutDuration = refreshExpires;
 		return this;
 	}
+	
+	/**
+	 * Enable the cache specifying size, expire time and maximum wait time for cache
+	 * refresh.
+	 * 
+	 * @param expires			cache hold time
+	 * @param refreshExpires	 cache refresh timeout
+	 * @return the builder
+	 */
+	
+	public JWKSourceBuilder<C> cached(long expires, long refreshExpires, CachedJWKSetSource.Listener<C> listener) {
+		this.cached = true;
+		this.cacheDuration = expires;
+		this.cacheRefreshTimeoutDuration = refreshExpires;
+		this.cachedJWKSetSourceListener = listener;
+		return this;
+	}
+
 
 	/**
-	 * Toggle the cache of Jwk. By default the source will use cache.
+	 * Toggle the cache of JWKs. By default the source will use cache.
 	 *
-	 * @param cached if the source should cache jwks
+	 * @param cached if the source should cache JWKs
 	 * @return the builder
 	 */
 	public JWKSourceBuilder<C> cachedForever() {
@@ -140,8 +180,23 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.preemptiveRefresh = false;
 		return this;
 	}
-
 	
+	/**
+	 * Toggle the cache of JWKs. By default the source will use cache.
+	 *
+	 * @param cached if the source should cache JWKs
+	 * @param listener {@linkplain CachedJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> cachedForever(CachedJWKSetSource.Listener<C> listener) {
+		this.cached = true;
+		this.cacheDuration = Long.MAX_VALUE;
+		this.cachedJWKSetSourceListener = listener;
+		// preemptive will never be necessary
+		this.preemptiveRefresh = false;
+		return this;
+	}
+
 	/**
 	 * Enable the preemptive cache. This also enables caching.
 	 *
@@ -159,6 +214,27 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		return this;
 	}
 
+	
+	/**
+	 * Enable the preemptive cache. This also enables caching.
+	 *
+	 * @param duration Preemptive limit, relative to cache time to live, i.e. "15
+	 *			  seconds before timeout, refresh time cached value".
+	 * @param eager Refresh the token even if there is no traffic (otherwise will be on demand).
+	 * @param listener {@linkplain PreemptiveCachedJWKSetSource.Listener} listener
+	 *			  
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> preemptiveCacheRefresh(long duration, boolean eager, PreemptiveCachedJWKSetSource.Listener<C> listener) {
+		this.cached = true;
+		this.preemptiveRefresh = true;
+		this.preemptiveRefreshDuration = duration;
+		this.preemptiveRefreshEager = eager;
+		this.preemptiveCachedJWKSetSourceListener = listener;
+		return this;
+	}
+
+	
 	/**
 	 * Enable the preemptive cache. This also enables caching.
 	 *
@@ -172,20 +248,51 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.preemptiveRefresh = preemptive;
 		return this;
 	}
+	
+	/**
+	 * Enable the preemptive cache. This also enables caching.
+	 *
+	 * @param preemptive if true, preemptive caching is active
+	 * @param listener {@linkplain PreemptiveCachedJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> preemptiveCacheRefresh(boolean preemptive, PreemptiveCachedJWKSetSource.Listener<C> listener) {
+		if (preemptive) {
+			this.cached = true;
+		}
+		this.preemptiveRefresh = preemptive;
+		this.preemptiveCachedJWKSetSourceListener = listener;
+		return this;
+	}
+
 
 	/**
-	 * Toggle the rate limit of Jwk. By default the source will use rate limit.
+	 * Toggle the rate limit of JWK refresh. By default the source will use rate limit.
 	 *
 	 * @param rateLimited if the source should rate limit jwks
+	 * @param listener {@linkplain RateLimitedJWKSetSource.Listener} listener
 	 * @return the builder
 	 */
 	public JWKSourceBuilder<C> rateLimited(boolean rateLimited) {
 		this.rateLimited = rateLimited;
 		return this;
 	}
+	
 
 	/**
-	 * Enable the cache ratelimiting. Rate-limiting is important to protect
+	 * Toggle the rate limit of JWK refresh. By default the source will use rate limit.
+	 *
+	 * @param rateLimited if the source should rate limit jwks
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> rateLimited(boolean rateLimited, RateLimitedJWKSetSource.Listener<C> listener) {
+		this.rateLimited = rateLimited;
+		this.rateLimitedJWKSetSourceListener = listener;
+		return this;
+	}
+
+	/**
+	 * Enable the cache rate-limiting. Rate-limiting is important to protect
 	 * downstream authorization servers because unknown keys will cause the list to
 	 * be reloaded; making it a vector for stressing this and the authorization
 	 * service.
@@ -199,19 +306,54 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.refillDuration = refillDuration;
 		return this;
 	}
+	
+	/**
+	 * Enable the cache ratelimiting. Rate-limiting is important to protect
+	 * downstream authorization servers because unknown keys will cause the list to
+	 * be reloaded; making it a vector for stressing this and the authorization
+	 * service.
+	 *
+	 * @param refillDuration duration between refills 
+	 * @param listener {@linkplain RateLimitedJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+
+	public JWKSourceBuilder<C> rateLimited(long refillDuration, RateLimitedJWKSetSource.Listener<C> listener) {
+		this.rateLimited = true;
+		this.refillDuration = refillDuration;
+		this.rateLimitedJWKSetSourceListener = listener;
+		return this;
+	}
 
 	public JWKSourceBuilder<C> failover(JWKSource<C> failover) {
 		this.failover = failover;
 		return this;
 	}
-
-	protected JWKSetSource<C> getRateLimitedSource(JWKSetSource<C> source) {
-		return new RateLimitedJWKSetSource<>(source, refillDuration);
-	}
+	
+	/**
+	 * Enable retry-one upon transient network problems. 
+	 * 
+	 * @param retrying true if enabled
+	 * @return the builder
+	 */
 
 	public JWKSourceBuilder<C> retrying(boolean retrying) {
 		this.retrying = retrying;
 
+		return this;
+	}
+
+	/**
+	 * Enable retry-one upon transient network problems. 
+	 * 
+	 * @param retrying true if enabled
+	 * @param listener {@linkplain RetryingJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+	
+	public JWKSourceBuilder<C> retrying(boolean retrying, RetryingJWKSetSource.Listener<C> listener) {
+		this.retrying = retrying;
+		this.retryingJWKSetSourceListener = listener;
 		return this;
 	}
 
@@ -225,7 +367,13 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		this.health = enabled;
 		return this;
 	}
-
+	
+	public JWKSourceBuilder<C> health(boolean enabled, JWKSetHealthSourceListener<C> listener) {
+		this.health = enabled;
+		this.jwkSetHealthSourceListener = listener;
+		return this;
+	}
+	
 	/**
 	 * Toggle the outage cache. By default the source will not use an outage
 	 * cache.
@@ -235,6 +383,20 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	 */
 	public JWKSourceBuilder<C> outageCached(boolean outageCached) {
 		this.outageCached = outageCached;
+		return this;
+	}
+	
+	/**
+	 * Toggle the outage cache. By default the source will not use an outage
+	 * cache.
+	 *
+	 * @param outageCached if the outage cache is enabled
+	 * @param listener {@linkplain OutageCachedJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> outageCached(boolean outageCached, OutageCachedJWKSetSource.Listener<C> listener) {
+		this.outageCached = outageCached;
+		this.outageCachedJWKSetSourceListener = listener;
 		return this;
 	}
 
@@ -253,6 +415,22 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 	}
 
 	/**
+	 * Enable never-expiring outage cache. In other words, as long as the
+	 * JWKs cannot be transferred / read from the source, typically 
+	 * due to network issues or service malfunction, the last certificates are to be used.
+	 *
+	 * @param outageCached if the outage cache is enabled
+	 * @param listener {@linkplain OutageCachedJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> outageCachedForever(OutageCachedJWKSetSource.Listener<C> listener) {
+		this.outageCached = true;
+		this.outageCachedDuration = Long.MAX_VALUE;
+		this.outageCachedJWKSetSourceListener = listener;
+		return this;
+	}
+	
+	/**
 	 * Enable the outage cache specifying size and expire time.
 	 *
 	 * @param duration amount of time the jwk will be cached
@@ -264,6 +442,22 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		return this;
 	}
 
+	/**
+	 * Enable the outage cache specifying size and expire time.
+	 *
+	 * @param duration amount of time the jwk will be cached
+	 * @param listener {@linkplain OutageCachedJWKSetSource.Listener} listener
+	 * @return the builder
+	 */
+	public JWKSourceBuilder<C> outageCached(long duration, OutageCachedJWKSetSource.Listener<C> listener) {
+		this.outageCached = true;
+		this.outageCachedDuration = duration;
+		this.outageCachedJWKSetSourceListener = listener;
+		return this;
+	}
+
+
+	
 	/**
 	 * Creates a {@link JWKSource}
 	 *
@@ -291,7 +485,10 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 		}
 
 		if (retrying) {
-			source = new RetryingJWKSetSource<>(source);
+			if(retryingJWKSetSourceListener != null) {
+				retryingJWKSetSourceListener = new DefaultRetryingJWKSetSourceListener<>(Level.FINER);
+			}
+			source = new RetryingJWKSetSource<>(source, retryingJWKSetSourceListener);
 		}
 		
 		if (outageCached) {
@@ -302,21 +499,38 @@ public class JWKSourceBuilder<C extends SecurityContext> {
 					outageCachedDuration = 5 * 60 * 1000 * 10; 
 				}
 			}
-			source = new OutageCachedJWKSetSource<>(source, outageCachedDuration);
+			if(outageCachedJWKSetSourceListener == null) {
+				outageCachedJWKSetSourceListener = new DefaultOutageCachedJWKSetSourceListener<>(Level.INFO, Level.WARNING);
+			}
+			source = new OutageCachedJWKSetSource<>(source, outageCachedDuration, outageCachedJWKSetSourceListener);
 		}
 
 		DefaultHealthJWKSetSource<C> healthSource = null;
 		if (health) {
-			source = healthSource = new DefaultHealthJWKSetSource<>(source);
+			if(jwkSetHealthSourceListener == null) {
+				jwkSetHealthSourceListener = new DefaultJWKSetHealthSourceListener<>(Level.FINER);
+			}
+			source = healthSource = new DefaultHealthJWKSetSource<>(source, jwkSetHealthSourceListener);
 		}
 
 		if (rateLimited) {
-			source = getRateLimitedSource(source);
+			if(rateLimitedJWKSetSourceListener == null) {
+				rateLimitedJWKSetSourceListener = new DefaultRateLimitedJWKSetSourceListener<>(Level.FINER);
+			}
+			source = new RateLimitedJWKSetSource<>(source, refillDuration, rateLimitedJWKSetSourceListener);
 		}
 		if (preemptiveRefresh) {
-			source = new PreemptiveCachedJWKSetSource<>(source, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshEager);
+			if(preemptiveCachedJWKSetSourceListener == null) {
+				preemptiveCachedJWKSetSourceListener = new DefaultPreemptiveCachedJWKSetSourceListener<>(Level.FINER);
+			}
+			
+			source = new PreemptiveCachedJWKSetSource<>(source, cacheDuration, cacheRefreshTimeoutDuration, preemptiveRefreshDuration, preemptiveRefreshEager, preemptiveCachedJWKSetSourceListener);
 		} else if (cached) {
-			source = new DefaultCachedJWKSetSource<>(source, cacheDuration, cacheRefreshTimeoutDuration);
+			
+			if(cachedJWKSetSourceListener == null) {
+				cachedJWKSetSourceListener = new DefaultCachedJWKSetSourceListener<>(Level.FINER);
+			}
+			source = new CachedJWKSetSource<>(source, cacheDuration, cacheRefreshTimeoutDuration, cachedJWKSetSourceListener);
 		}
 		if (health) {
 			// set the top level on the health source, for refreshing from the top.

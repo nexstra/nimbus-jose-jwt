@@ -17,26 +17,36 @@
 
 package com.nimbusds.jose.jwk.source;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Logger;
 
 /**
  * Caching {@linkplain JWKSetSource}. Blocks when the cache is updated.
  */
 
-public class DefaultCachedJWKSetSource<C extends SecurityContext> extends AbstractCachedJWKSetSource<C> {
+public class CachedJWKSetSource<C extends SecurityContext, L extends CachedJWKSetSource.Listener<C>> extends AbstractCachedJWKSetSource<C> {
 
-	private static final Logger LOGGER = Logger.getLogger(DefaultCachedJWKSetSource.class.getName());
-
+	public static interface Listener<C extends SecurityContext> extends JWKSetSourceListener<C> {
+		
+		void onPendingCacheRefresh(int queueLength, C context);
+		void onCacheRefreshed(int jwksCount, int queueLength, C context);
+		
+		void onUnableToRefreshCache(C context);
+		
+		void onWaitingForCacheRefresh(long timeout, int queueLength, C context);
+		void onTimeoutWaitingForCacheRefresh(long timeout, int queueLength, C context);
+		
+	}
+	
 	protected final ReentrantLock lock = new ReentrantLock();
 
 	protected final long refreshTimeout;
-
+	
+	protected final L listener;
 	/**
 	 * Construct new instance.
 	 * 
@@ -45,10 +55,11 @@ public class DefaultCachedJWKSetSource<C extends SecurityContext> extends Abstra
 	 * @param refreshTimeout cache refresh timeout unit
 	 */
 
-	public DefaultCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout) {
+	public CachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, L listener) {
 		super(source, timeToLive);
 
 		this.refreshTimeout = refreshTimeout;
+		this.listener = listener;
 	}
 
 	public JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException {
@@ -81,25 +92,23 @@ public class DefaultCachedJWKSetSource<C extends SecurityContext> extends Abstra
 					if (!isCacheUpdatedSince(currentTime)) {
 						// Seems cache was not updated.
 						// We hold the lock, so safe to update it now
-						LOGGER.info("Perform JWK cache refresh..");
+						listener.onPendingCacheRefresh(lock.getQueueLength(), context);
 
 						JWKSetCacheItem result = loadJWKSetFromSource(currentTime, context);
 
-						LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting), now have " + result.getValue().size() + " JWKs");
-
+						listener.onCacheRefreshed(result.getValue().size(), lock.getQueueLength(), context);
+						
 						cache = result;
 					} else {
 						// load updated value
 						cache = this.cache;
-						
-						LOGGER.info("JWK cache was previously refreshed");
 					}
 				} finally {
 					lock.unlock();
 				}
 			} else {
-				LOGGER.info("Wait for up to " + refreshTimeout + "ms for the JWK cache to be refreshed (with " + lock.getQueueLength() + " already waiting)");
-				
+				listener.onWaitingForCacheRefresh(refreshTimeout, lock.getQueueLength(), context);
+
 				if(lock.tryLock(refreshTimeout, TimeUnit.MILLISECONDS)) {
 					try {
 						// see if anyone already refreshed the cache while we were
@@ -107,21 +116,21 @@ public class DefaultCachedJWKSetSource<C extends SecurityContext> extends Abstra
 						if (!isCacheUpdatedSince(currentTime)) {
 							// Seems cache was not updated.
 							// We hold the lock, so safe to update it now
-							LOGGER.warning("JWK cache was NOT successfully refreshed while waiting, retry now (with " + lock.getQueueLength() + " waiting).." );
+							listener.onPendingCacheRefresh(lock.getQueueLength(), context);
 							
 							cache = loadJWKSetFromSource(currentTime, context);
 							
-							LOGGER.info("JWK cache refreshed (with " + lock.getQueueLength() + " waiting)");
+							listener.onCacheRefreshed(cache.getValue().size() , lock.getQueueLength(), context);
 						} else {
 							// load updated value
-							LOGGER.info("JWK cache was successfully refreshed while waiting");
-							
 							cache = this.cache;
 						}
 					} finally {
 						lock.unlock();
 					}
 				} else {
+					listener.onTimeoutWaitingForCacheRefresh(refreshTimeout, lock.getQueueLength(), context);
+
 					throw new JWKSetUnavailableException("Timeout while waiting for refreshed cache (limit of " + refreshTimeout + "ms exceed).");
 				}
 			}
@@ -130,6 +139,8 @@ public class DefaultCachedJWKSetSource<C extends SecurityContext> extends Abstra
 				return cache;
 			}
 
+			listener.onUnableToRefreshCache(context);
+			
 			throw new JWKSetUnavailableException("Unable to refresh cache");
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt(); // Restore interrupted state to make sonar happy

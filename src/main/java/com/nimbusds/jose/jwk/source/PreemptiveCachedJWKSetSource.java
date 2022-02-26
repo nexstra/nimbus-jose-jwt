@@ -28,7 +28,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -44,10 +43,23 @@ import java.util.logging.Logger;
  * <br>
  */
 
-public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends DefaultCachedJWKSetSource<C> {
+public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends CachedJWKSetSource<C, PreemptiveCachedJWKSetSource.Listener<C>> {
 
-	private static final Logger LOGGER = Logger.getLogger(PreemptiveCachedJWKSetSource.class.getName());
+	public static interface Listener<C extends SecurityContext> extends CachedJWKSetSource.Listener<C> {
+		
+		void onEagerCacheRefreshScheduled(long time, C context);
 
+		void onEagerCacheRefreshNotScheduled(C context);
+
+		void onEagerCacheRefreshFailed(Exception e, C context);
+
+		void onPendingPreemptiveCacheRefresh(C context);
+
+		void onPreemptiveCacheRefreshed(C context);
+
+		void onUnableToPreemptiveRefreshCache(C context);
+	}
+	
 	// preemptive update should execute when
 	// expire - preemptiveRefresh < current time < expire.
 	private final long preemptiveRefresh; // milliseconds
@@ -77,8 +89,8 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 	 * @param eager			 preemptive refresh even if no traffic (schedule update)
 	 */
 
-	public PreemptiveCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager) {
-		this(source, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor(), true);
+	public PreemptiveCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, Listener<C> listener) {
+		this(source, timeToLive, refreshTimeout, preemptiveRefresh, eager, Executors.newSingleThreadExecutor(), true, listener);
 	}
 
 	/**
@@ -96,8 +108,8 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 	 * @param shutdownExecutorOnClose Whether to shutdown the executor service on calls to close(..).
 	 */
 
-	public PreemptiveCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose) {
-		super(source, timeToLive, refreshTimeout);
+	public PreemptiveCachedJWKSetSource(JWKSetSource<C> source, long timeToLive, long refreshTimeout, long preemptiveRefresh, boolean eager, ExecutorService executorService, boolean shutdownExecutorOnClose, Listener<C> listener) {
+		super(source, timeToLive, refreshTimeout, listener);
 
 		if (preemptiveRefresh + refreshTimeout > timeToLive) {
 			throw new IllegalArgumentException("Time to live (" + timeToLive/1000 + "s) must exceed preemptive refresh limit (" + preemptiveRefresh/1000 + "s) + the refresh timeout (" + refreshTimeout/1000 + "s) (as in the max duration of the refresh operation itself)");
@@ -154,20 +166,16 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 						// so will only refresh if this specific cache entry still is the current one
 						preemptiveRefresh(System.currentTimeMillis(), cache, true, context);
 					} catch (Exception e) {
-						LOGGER.log(Level.WARNING, "Scheduled eager JWKs refresh failed", e);
+						listener.onEagerCacheRefreshFailed(e, context);
 					}
 				}
 			};
 			this.eagerScheduledFuture = scheduledExecutorService.schedule(command, delay, TimeUnit.MILLISECONDS);
 
-			LOGGER.info("Scheduled next eager JWKs refresh in " + getTime(delay));
+			listener.onEagerCacheRefreshScheduled(delay, context);
 		} else {
-			LOGGER.log(Level.WARNING, "Not scheduling eager JWKs refresh");
+			listener.onEagerCacheRefreshNotScheduled(context);
 		}
-	}
-
-	protected String getTime(long update) {
-		return Long.toString(update);
 	}
 
 	/**
@@ -216,8 +224,12 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 				@Override
 				public void run() {
 					try {
-						LOGGER.info("Perform preemptive JWKs refresh");
+						
+						listener.onPendingPreemptiveCacheRefresh(context);
+						
 						PreemptiveCachedJWKSetSource.this.getJwksBlocking(time, context);
+
+						listener.onPreemptiveCacheRefreshed(context);
 
 						// so next time this method is invoked, it'll be with the updated cache item expiry time
 					} catch (Throwable e) {
@@ -225,7 +237,8 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 						cacheExpires = -1L;
 						// ignore, unable to update
 						// another thread will attempt the same
-						LOGGER.log(Level.WARNING, "Preemptive JWKs refresh failed", e);
+						
+						listener.onUnableToPreemptiveRefreshCache(context);
 					}
 				}
 			};
@@ -258,7 +271,6 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 		ScheduledFuture<?> eagerJwkListCacheItem = this.eagerScheduledFuture; // defensive copy
 		if(eagerJwkListCacheItem != null) {
 			eagerJwkListCacheItem.cancel(true);
-			LOGGER.info("Cancelled scheduled JWKs refresh");
 		}
 		
 		super.close();
@@ -269,7 +281,6 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 				executorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				// ignore
-				LOGGER.log(Level.INFO, "Interrupted while waiting for executor shutdown", e);
 				Thread.currentThread().interrupt();
 			}
 		}
@@ -279,7 +290,6 @@ public class PreemptiveCachedJWKSetSource<C extends SecurityContext> extends Def
 				scheduledExecutorService.awaitTermination(refreshTimeout, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				// ignore
-				LOGGER.log(Level.INFO, "Interrupted while waiting for scheduled executor shutdown", e);
 				Thread.currentThread().interrupt();
 			}
 		}		

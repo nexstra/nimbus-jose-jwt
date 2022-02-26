@@ -24,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.fail;
@@ -37,10 +38,12 @@ public class OutageCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private OutageCachedJWKSetSource<SecurityContext> provider;
 
+	private OutageCachedJWKSetSource.Listener<SecurityContext> listener = new DefaultOutageCachedJWKSetSourceListener<>(Level.INFO, Level.WARNING);
+	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new OutageCachedJWKSetSource<>(delegate, 10 * 3600 * 1000);
+		provider = new OutageCachedJWKSetSource<>(delegate, 10 * 3600 * 1000, listener);
 	}
 
 	@Test

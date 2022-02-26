@@ -30,14 +30,18 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.logging.Level;
+
 public class RetryingJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private RetryingJWKSetSource<SecurityContext> provider;
 
+	private RetryingJWKSetSource.Listener<SecurityContext> listener = new DefaultRetryingJWKSetSourceListener<SecurityContext>(Level.INFO);
+	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RetryingJWKSetSource<>(delegate);
+		provider = new RetryingJWKSetSource<>(delegate, listener);
 	}
 
 	@Test

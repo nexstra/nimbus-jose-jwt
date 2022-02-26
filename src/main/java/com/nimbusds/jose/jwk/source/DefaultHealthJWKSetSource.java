@@ -41,8 +41,8 @@ import java.util.logging.Logger;
 
 public class DefaultHealthJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
 
-	private static final Logger LOGGER = Logger.getLogger(DefaultHealthJWKSetSource.class.getName());
-
+	private final JWKSetHealthSourceListener<C> listener;
+	
 	/** The state of the below source */
 	private volatile JWKSetHealth sourceStatus;
 	
@@ -55,8 +55,9 @@ public class DefaultHealthJWKSetSource<C extends SecurityContext> extends BaseJW
 	 */
 	private JWKSetSource<C> refreshSource;
 
-	public DefaultHealthJWKSetSource(JWKSetSource<C> source) {
+	public DefaultHealthJWKSetSource(JWKSetSource<C> source, JWKSetHealthSourceListener<C> listener) {
 		super(source);
+		this.listener = listener;
 	}
 
 	@Override
@@ -106,7 +107,7 @@ public class DefaultHealthJWKSetSource<C extends SecurityContext> extends BaseJW
 				jwks = refreshSource.getJWKSet(currentTime, false, context);
 			} catch (Exception e) {
 				// ignore
-				LOGGER.log(Level.INFO, "Exception refreshing health status.", e);
+				listener.onHealthRefreshException(e, context);
 			} finally {
 				// as long as the JWK list was returned, health is good
 				threadSafeStatus = new JWKSetHealth(System.currentTimeMillis(), jwks != null);

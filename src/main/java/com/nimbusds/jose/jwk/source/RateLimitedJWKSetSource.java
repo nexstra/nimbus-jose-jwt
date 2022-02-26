@@ -38,6 +38,12 @@ import com.nimbusds.jose.proc.SecurityContext;
 
 public class RateLimitedJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
 
+	public static interface Listener<C extends SecurityContext> extends JWKSetSourceListener<C> {
+		void onRateLimited(long duration, long remaining, C context);
+	}
+	
+	private final Listener<C> listener;
+	
 	// interval duration
 	private final long duration;
 	private long nextLimit = -1L;
@@ -47,11 +53,12 @@ public class RateLimitedJWKSetSource<C extends SecurityContext> extends BaseJWKS
 	 * Creates a new JWK set source that throttles the number of requests for a JWKSet.
 	 *
 	 * @param duration minimum number of milliseconds per two downstream requests.
-	 * @param source			   source to request JWK sets from when the rate limit allows it.
+	 * @param source source to request JWK sets from when within the rate limit.
 	 */
-	public RateLimitedJWKSetSource(JWKSetSource<C> source, long duration) {
+	public RateLimitedJWKSetSource(JWKSetSource<C> source, long duration, Listener<C> listener) {
 		super(source);
 		this.duration = duration;
+		this.listener = listener;
 	}
 
 	@Override
@@ -59,16 +66,24 @@ public class RateLimitedJWKSetSource<C extends SecurityContext> extends BaseJWKS
 		
 		// implementation note: this code is not intended to run many parallel threads
 		// for the same instance, thus use of synchronized will not cause congestion
+		
+		boolean rateLimited;
 		synchronized(this) {
 			if (nextLimit <= time) {
 				nextLimit = time + duration;
 				counter = 1;
+				
+				rateLimited = false;
 			} else {
-				if(counter <= 0) {
-					throw new RateLimitReachedException();
+				rateLimited = counter <= 0; 
+				if(!rateLimited) {
+					counter--;
 				}
-				counter--;
 			}
+		}
+		if(rateLimited) {
+			listener.onRateLimited(duration, nextLimit - time, context);
+			throw new RateLimitReachedException();
 		}
 		return source.getJWKSet(time, forceUpdate, context);
 	}

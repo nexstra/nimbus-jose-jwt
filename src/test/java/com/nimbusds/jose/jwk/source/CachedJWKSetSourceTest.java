@@ -29,6 +29,7 @@ import java.lang.Thread.State;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
@@ -42,7 +43,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class DefaultCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
+public class CachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private Runnable lockRunnable = new Runnable() {
 		@Override
@@ -59,13 +60,15 @@ public class DefaultCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
 			source.getLock().unlock();
 		}
 	};
+	
+	private CachedJWKSetSource<SecurityContext, CachedJWKSetSource.Listener<SecurityContext>> source;
 
-	private DefaultCachedJWKSetSource<SecurityContext> source;
+	private CachedJWKSetSource.Listener<SecurityContext> listener = new DefaultCachedJWKSetSourceListener<>(Level.INFO);
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		source = new DefaultCachedJWKSetSource<>(delegate, 10 * 3600 * 1000, 2 * 1000);
+		source = new CachedJWKSetSource<>(delegate, 10 * 3600 * 1000, 2 * 1000, listener);
 	}
 
 	@Test

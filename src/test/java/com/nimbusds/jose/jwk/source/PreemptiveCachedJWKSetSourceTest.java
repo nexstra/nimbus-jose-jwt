@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
@@ -69,13 +70,14 @@ public class PreemptiveCachedJWKSetSourceTest extends AbstractDelegateSourceTest
 	protected static final JWKSelector KID_SELECTOR = new JWKSelector(new JWKMatcher.Builder().keyID(KID).build());
 
 	private PreemptiveCachedJWKSetSource<SecurityContext> source;
-
+	private PreemptiveCachedJWKSetSource.Listener<SecurityContext> listener = new DefaultPreemptiveCachedJWKSetSourceListener<SecurityContext>(Level.INFO);
+	
 	private UrlJWKSource<SecurityContext> wrapper;
 
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		source = new PreemptiveCachedJWKSetSource<>(delegate, 3600 * 1000 * 10, 15 * 1000, 10 * 1000, false);
+		source = new PreemptiveCachedJWKSetSource<>(delegate, 3600 * 1000 * 10, 15 * 1000, 10 * 1000, false, listener);
 
 		wrapper = new UrlJWKSource<>(source);
 	}
@@ -307,7 +309,7 @@ public class PreemptiveCachedJWKSetSourceTest extends AbstractDelegateSourceTest
 		long refreshTimeout = 150;
 		long preemptiveRefresh = 300;
 
-		PreemptiveCachedJWKSetSource<SecurityContext> provider = new PreemptiveCachedJWKSetSource<>(delegate, timeToLive, refreshTimeout, preemptiveRefresh, true);
+		PreemptiveCachedJWKSetSource<SecurityContext> provider = new PreemptiveCachedJWKSetSource<>(delegate, timeToLive, refreshTimeout, preemptiveRefresh, true, listener);
 		UrlJWKSource<SecurityContext> wrapper = new UrlJWKSource<>(provider);
 
 		try {

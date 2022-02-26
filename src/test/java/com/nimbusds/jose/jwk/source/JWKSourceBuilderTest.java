@@ -44,7 +44,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(0) instanceof CachedJWKSetSource);
 		assertTrue(jwksProviders.get(1) instanceof JWKSetSource);
 	}
 
@@ -55,7 +55,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(2, jwksProviders.size());
 
-		DefaultCachedJWKSetSource<SecurityContext> cachedJwksProvider = (DefaultCachedJWKSetSource<SecurityContext>) jwksProviders.get(0);
+		CachedJWKSetSource<SecurityContext, CachedJWKSetSource.Listener<SecurityContext>> cachedJwksProvider = (CachedJWKSetSource<SecurityContext, CachedJWKSetSource.Listener<SecurityContext>>) jwksProviders.get(0);
 
 		assertEquals(cachedJwksProvider.getTimeToLive(), TimeUnit.HOURS.toMillis(24));
 	}
@@ -89,7 +89,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(0) instanceof CachedJWKSetSource);
 		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
 		assertTrue(jwksProviders.get(3) instanceof JWKSetSource);
@@ -104,7 +104,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(0) instanceof CachedJWKSetSource);
 		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
 		assertTrue(jwksProviders.get(3) instanceof JWKSetSource);
@@ -118,7 +118,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(4, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(0) instanceof CachedJWKSetSource);
 		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
 		assertTrue(jwksProviders.get(3) instanceof JWKSetSource);
@@ -191,7 +191,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 		List<JWKSetSource<SecurityContext>> jwksProviders = jwksProviders(provider);
 		assertEquals(6, jwksProviders.size());
 
-		assertTrue(jwksProviders.get(0) instanceof DefaultCachedJWKSetSource);
+		assertTrue(jwksProviders.get(0) instanceof CachedJWKSetSource);
 		assertTrue(jwksProviders.get(1) instanceof RateLimitedJWKSetSource);
 		assertTrue(jwksProviders.get(2) instanceof DefaultHealthJWKSetSource);
 		assertTrue(jwksProviders.get(3) instanceof OutageCachedJWKSetSource);

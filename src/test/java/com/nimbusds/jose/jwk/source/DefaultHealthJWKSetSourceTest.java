@@ -35,15 +35,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import java.util.logging.Level;
+
 public class DefaultHealthJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private DefaultHealthJWKSetSource<SecurityContext> provider;
 	private JWKSetSource<SecurityContext> refreshProvider = mock(JWKSetSource.class);
 
+	private JWKSetHealthSourceListener<SecurityContext> listener = new DefaultJWKSetHealthSourceListener<SecurityContext>(Level.INFO);
+	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new DefaultHealthJWKSetSource<>(delegate);
+		provider = new DefaultHealthJWKSetSource<>(delegate, listener);
 		provider.setRefreshSource(refreshProvider);
 		
 		when(refreshProvider.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);

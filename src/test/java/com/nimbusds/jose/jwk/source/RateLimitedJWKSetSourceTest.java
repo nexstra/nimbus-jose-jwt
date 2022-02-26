@@ -29,16 +29,20 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.logging.Level;
+
 public class RateLimitedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
 	private RateLimitedJWKSetSource<SecurityContext> provider;
 
 	private int duration = 30 * 1000;
 	
+	private RateLimitedJWKSetSource.Listener<SecurityContext> listener = new DefaultRateLimitedJWKSetSourceListener<SecurityContext>(Level.INFO);
+	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RateLimitedJWKSetSource<>(delegate, duration);
+		provider = new RateLimitedJWKSetSource<>(delegate, duration, listener);
 	}
 
 	@Test

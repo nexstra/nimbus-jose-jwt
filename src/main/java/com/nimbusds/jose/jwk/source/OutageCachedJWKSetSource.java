@@ -36,10 +36,15 @@ import java.util.logging.Logger;
 
 public class OutageCachedJWKSetSource<C extends SecurityContext> extends AbstractCachedJWKSetSource<C> {
 
-	private static final Logger LOGGER = Logger.getLogger(OutageCachedJWKSetSource.class.getName());
-
-	public OutageCachedJWKSetSource(JWKSetSource<C> delegate, long duration) {
+	public static interface Listener<C extends SecurityContext> extends JWKSetSourceListener<C> {
+		void onOutage(Exception e, long totalTimeToLive, long remainingTimeToLive, C context);
+	}
+	
+	private final Listener<C> listener;
+	
+	public OutageCachedJWKSetSource(JWKSetSource<C> delegate, long duration, Listener<C> listener) {
 		super(delegate, duration);
+		this.listener = listener;
 	}
 
 	@Override
@@ -60,27 +65,7 @@ public class OutageCachedJWKSetSource<C extends SecurityContext> extends Abstrac
 				if (cache != null && cache.isValid(currentTime)) {
 					long left = cache.getExpires() - currentTime; // in millis
 
-					// So validation of tokens will still work, but fail as soon as this cache
-					// expires.
-					// Note that issuing new tokens will probably not work when this operation does
-					// not work either.
-					//
-					// Logging scheme:
-					// 50% time left, or less than one hour -> error
-					// 50-100% time left -> warning
-
-					long minutes = (left % 3600000) / 60000;
-					long hours = left / 3600000;
-
-					long percent = (left * 100) / timeToLive;
-
-					String message = "Unable to refresh keys for verification of Json Web Token signatures: " + e1.toString() + ". If this is not resolved, all incoming requests with authorization will fail as outage cache expires in "
-							+ hours + " hours and " + minutes + " minutes.";
-					if (percent < 50 || hours == 0) {
-						LOGGER.log(Level.SEVERE, message, e1);
-					} else {
-						LOGGER.log(Level.WARNING, message, e1);
-					}
+					listener.onOutage(e1, timeToLive, left, context);
 
 					return cache.getValue();
 				}
