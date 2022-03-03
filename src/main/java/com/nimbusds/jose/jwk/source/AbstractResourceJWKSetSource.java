@@ -24,7 +24,6 @@ import com.nimbusds.jose.util.Resource;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.logging.Logger;
 
 /**
  * Abstract superclass for {@linkplain JWKSetSource} getting its data from an URL.
@@ -32,15 +31,13 @@ import java.util.logging.Logger;
 
 public abstract class AbstractResourceJWKSetSource<C extends SecurityContext> implements JWKSetSource<C> {
 
-	private static final Logger LOGGER = Logger.getLogger(AbstractResourceJWKSetSource.class.getName());
-
 	protected final URL url;
 
 	/**
-	 * Creates a set source that loads from the given URL
+	 * Creates a set source that loads from the given URL.
 	 *
-	 * @param url			   The url of the JWKs
-	 * @param resourceRetriever ResourceRetriever
+	 * @param url			   The URL of the JWKs
+	 * @param resourceRetriever Resource retriever
 	 */
 	public AbstractResourceJWKSetSource(URL url) {
 		checkArgument(url != null, "A non-null url is required");
@@ -55,31 +52,20 @@ public abstract class AbstractResourceJWKSetSource<C extends SecurityContext> im
 	}
 
 	public JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException {
-		LOGGER.info("Requesting JWKs from " + url + "..");
-
 		Resource res = getResource(context);
 		try {
 			// Note on error handling: We want to avoid any generic HTML document 
 			// (i.e. default HTTP error pages) and other invalid responses being accepted 
-			// as an empty list of JWKs.
-			//
-			// This is handled by the underlying parser. It checks that the transferred 
-			// document is in fact a JSON document, and that the "keys" field is present.
+			// as an empty list of JWKs. This is handled by the underlying parser; 
+			// it checks that the transferred document is in fact a JSON document, 
+			// and that the "keys" field is present.
 			
-			JWKSet jwkSet = JWKSet.parse(res.getContent());
-
-			if (jwkSet.isEmpty()) {
-				LOGGER.warning(url + " returned an empty list of JWKs; no JWT signatures can be verified.");
-			} else {
-				LOGGER.info(url + " returned " + jwkSet.size() + " JWKs");
-			}
-
-			return jwkSet;
+			return JWKSet.parse(res.getContent());
 		} catch (Exception e) {
 			// assume the server returns some kind of generic or incomplete document, 
 			// treat this equivalent to an input/output exception.
 
-			throw new JWKSetParseException("Couldn't parse remote JWK set: " + e.getMessage(), e);
+			throw new JWKSetParseException("Unable to parse JWKs", e);
 		}
 	}
 
