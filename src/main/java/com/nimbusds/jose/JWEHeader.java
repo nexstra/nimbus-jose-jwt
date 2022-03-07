@@ -74,7 +74,7 @@ import com.nimbusds.jose.util.X509CertChainUtils;
  * </pre>
  *
  * @author Vladimir Dzhuvinov
- * @version 2021-10-01
+ * @version 2022-03-07
  */
 @Immutable
 public final class JWEHeader extends CommonSEHeader {
@@ -125,10 +125,10 @@ public final class JWEHeader extends CommonSEHeader {
 	 * <p>Example usage:
 	 *
 	 * <pre>
-	 * JWEHeader header = new JWEHeader.Builder(JWEAlgorithm.RSA1_5, EncryptionMethod.A128GCM).
-	 *                    contentType("text/plain").
-	 *                    customParam("exp", new Date().getTime()).
-	 *                    build();
+	 * JWEHeader header = new JWEHeader.Builder(JWEAlgorithm.RSA1_5, EncryptionMethod.A128GCM)
+	 *                    .contentType("text/plain")
+	 *                    .customParam("exp", new Date().getTime())
+	 *                    .build();
 	 * </pre>
 	 */
 	public static class Builder {
@@ -165,13 +165,13 @@ public final class JWEHeader extends CommonSEHeader {
 
 
 		/**
-		 * JWK Set URL.
+		 * Public JWK Set URL.
 		 */
 		private URI jku;
 
 
 		/**
-		 * JWK.
+		 * Public JWK.
 		 */
 		private JWK jwk;
 
@@ -383,9 +383,10 @@ public final class JWEHeader extends CommonSEHeader {
 
 
 		/**
-		 * Sets the JSON Web Key (JWK) Set URL ({@code jku}) parameter.
+		 * Sets the public JSON Web Key (JWK) Set URL ({@code jku})
+		 * parameter.
 		 *
-		 * @param jku The JSON Web Key (JWK) Set URL parameter,
+		 * @param jku The public JSON Web Key (JWK) Set URL parameter,
 		 *            {@code null} if not specified.
 		 *
 		 * @return This builder.
@@ -398,14 +399,18 @@ public final class JWEHeader extends CommonSEHeader {
 
 
 		/**
-		 * Sets the JSON Web Key (JWK) ({@code jwk}) parameter.
+		 * Sets the public JSON Web Key (JWK) ({@code jwk}) parameter.
 		 *
-		 * @param jwk The JSON Web Key (JWK) ({@code jwk}) parameter,
-		 *            {@code null} if not specified.
+		 * @param jwk The public JSON Web Key (JWK) ({@code jwk})
+		 *            parameter, {@code null} if not specified.
 		 *
 		 * @return This builder.
 		 */
 		public Builder jwk(final JWK jwk) {
+			
+			if (jwk != null && jwk.isPrivate()) {
+				throw new IllegalArgumentException("The JWK must be public");
+			}
 
 			this.jwk = jwk;
 			return this;
@@ -1256,10 +1261,7 @@ public final class JWEHeader extends CommonSEHeader {
 			} else if(HeaderParameterNames.JWK_SET_URL.equals(name)) {
 				header = header.jwkURL(JSONObjectUtils.getURI(jsonObject, name));
 			} else if(HeaderParameterNames.JWK.equals(name)) {
-				Map<String, Object> jwkObject = JSONObjectUtils.getJSONObject(jsonObject, name);
-				if (jwkObject != null) {
-					header = header.jwk(JWK.parse(jwkObject));
-				}
+				header = header.jwk(CommonSEHeader.parsePublicJWK(JSONObjectUtils.getJSONObject(jsonObject, name)));
 			} else if(HeaderParameterNames.X_509_CERT_URL.equals(name)) {
 				header = header.x509CertURL(JSONObjectUtils.getURI(jsonObject, name));
 			} else if(HeaderParameterNames.X_509_CERT_SHA_1_THUMBPRINT.equals(name)) {
