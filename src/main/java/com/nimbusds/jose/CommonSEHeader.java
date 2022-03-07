@@ -19,6 +19,7 @@ package com.nimbusds.jose;
 
 
 import java.net.URI;
+import java.text.ParseException;
 import java.util.*;
 
 import com.nimbusds.jose.jwk.JWK;
@@ -47,7 +48,7 @@ import com.nimbusds.jose.util.Base64URL;
  * </ul>
  *
  * @author Vladimir Dzhuvinov
- * @version 2017-04-09
+ * @version 2022-03-07
  */
 abstract class CommonSEHeader extends Header {
 
@@ -56,13 +57,13 @@ abstract class CommonSEHeader extends Header {
 
 
 	/**
-	 * JWK Set URL, {@code null} if not specified.
+	 * Public JWK Set URL, {@code null} if not specified.
 	 */
 	private final URI jku;
 
 
 	/**
-	 * JWK, {@code null} if not specified.
+	 * Public JWK, {@code null} if not specified.
 	 */
 	private final JWK jwk;
 
@@ -110,9 +111,10 @@ abstract class CommonSEHeader extends Header {
 	 * @param crit            The names of the critical header
 	 *                        ({@code crit}) parameters, empty set or
 	 *                        {@code null} if none.
-	 * @param jku             The JSON Web Key (JWK) Set URL ({@code jku})
-	 *                        parameter, {@code null} if not specified.
-	 * @param jwk             The X.509 certificate URL ({@code jwk})
+	 * @param jku             The public JSON Web Key (JWK) Set URL
+	 *                        ({@code jku}) parameter, {@code null} if not
+	 *                        specified.
+	 * @param jwk             The public JSON Web Key (JWK) ({@code jwk})
 	 *                        parameter, {@code null} if not specified.
 	 * @param x5u             The X.509 certificate URL parameter
 	 *                        ({@code x5u}), {@code null} if not specified.
@@ -165,10 +167,10 @@ abstract class CommonSEHeader extends Header {
 
 
 	/**
-	 * Gets the JSON Web Key (JWK) Set URL ({@code jku}) parameter.
+	 * Gets the public JSON Web Key (JWK) Set URL ({@code jku}) parameter.
 	 *
-	 * @return The JSON Web Key (JWK) Set URL parameter, {@code null} if
-	 *         not specified.
+	 * @return The public JSON Web Key (JWK) Set URL parameter,
+	 *         {@code null} if not specified.
 	 */
 	public URI getJWKURL() {
 
@@ -177,9 +179,9 @@ abstract class CommonSEHeader extends Header {
 
 
 	/**
-	 * Gets the JSON Web Key (JWK) ({@code jwk}) parameter.
+	 * Gets the public JSON Web Key (JWK) ({@code jwk}) parameter.
 	 *
-	 * @return The JSON Web Key (JWK) parameter, {@code null} if not
+	 * @return The public JSON Web Key (JWK) parameter, {@code null} if not
 	 *         specified.
 	 */
 	public JWK getJWK() {
@@ -326,5 +328,32 @@ abstract class CommonSEHeader extends Header {
 		}
 
 		return o;
+	}
+	
+	
+	/**
+	 * Parses a public JWK.
+	 *
+	 * @param jwkObject The JWK object in a JWS or JWE header, {@code null}
+	 *                  if not specified.
+	 *
+	 * @return The JWK, {@code null} if none.
+	 *
+	 * @throws ParseException If public JWK parsing failed.
+	 */
+	static JWK parsePublicJWK(final Map<String, Object> jwkObject)
+		throws ParseException {
+		
+		if (jwkObject == null) {
+			return null;
+		}
+		
+		JWK jwk = JWK.parse(jwkObject);
+		
+		if (jwk.isPrivate()) {
+			throw new ParseException("Non-public key in jwk header parameter", 0);
+		}
+		
+		return jwk;
 	}
 }

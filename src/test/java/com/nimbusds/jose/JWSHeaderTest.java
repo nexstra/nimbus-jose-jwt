@@ -22,6 +22,8 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.*;
 
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimNames;
 import junit.framework.TestCase;
 
@@ -37,7 +39,7 @@ import com.nimbusds.jose.util.JSONObjectUtils;
  * Tests JWS header parsing and serialisation.
  *
  * @author Vladimir Dzhuvinov
- * @version 2020-06-02
+ * @version 2022-03-07
  */
 public class JWSHeaderTest extends TestCase {
 	
@@ -293,13 +295,15 @@ public class JWSHeaderTest extends TestCase {
 
 	public void testBuilder()
 		throws Exception {
+		
+		JWK jwk = new RSAKeyGenerator(2048).generate().toPublicJWK();
 
 		JWSHeader h = new JWSHeader.Builder(JWSAlgorithm.HS256).
 			type(JOSEObjectType.JOSE).
 			contentType("application/json").
 			criticalParams(new HashSet<>(Arrays.asList(JWTClaimNames.EXPIRATION_TIME, JWTClaimNames.NOT_BEFORE))).
 			jwkURL(new URI("http://example.com/jwk.json")).
-			jwk(new OctetSequenceKey.Builder(new Base64URL("xyz")).build()).
+			jwk(jwk).
 			x509CertURL(new URI("http://example.com/cert.pem")).
 			x509CertThumbprint(new Base64URL("abc")).
 			x509CertSHA256Thumbprint(new Base64URL("abc256")).
@@ -316,7 +320,7 @@ public class JWSHeaderTest extends TestCase {
 		assertTrue(h.getCriticalParams().contains(JWTClaimNames.NOT_BEFORE));
 		assertEquals(2, h.getCriticalParams().size());
 		assertEquals("http://example.com/jwk.json", h.getJWKURL().toString());
-		assertEquals("xyz", ((OctetSequenceKey)h.getJWK()).getKeyValue().toString());
+		assertEquals(jwk, h.getJWK());
 		assertEquals("http://example.com/cert.pem", h.getX509CertURL().toString());
 		assertEquals("abc", h.getX509CertThumbprint().toString());
 		assertEquals("abc256", h.getX509CertSHA256Thumbprint().toString());
@@ -608,6 +612,38 @@ public class JWSHeaderTest extends TestCase {
 			fail();
 		} catch (ParseException e) {
 			assertEquals("Not a JWS header", e.getMessage());
+		}
+	}
+	
+	
+	public void testBuildWithNonPublicJWK() throws JOSEException {
+		
+		JWK jwk = new RSAKeyGenerator(2048).generate();
+		
+		try {
+			new JWSHeader.Builder(JWSAlgorithm.RS256)
+				.jwk(jwk);
+			fail();
+		} catch (IllegalArgumentException e) {
+			assertEquals("The JWK must be public", e.getMessage());
+		}
+	}
+	
+	
+	public void testParseHeaderWithNonPublicJWK() throws JOSEException {
+		
+		JWSHeader header = new JWSHeader(JWSAlgorithm.RS256);
+		
+		Map<String, Object> jsonObject = header.toJSONObject();
+		
+		JWK jwk = new RSAKeyGenerator(2048).generate();
+		jsonObject.put("jwk", jwk.toJSONObject());
+		
+		try {
+			JWSHeader.parse(jsonObject);
+			fail();
+		} catch (ParseException e) {
+			assertEquals("Non-public key in jwk header parameter", e.getMessage());
 		}
 	}
 }
