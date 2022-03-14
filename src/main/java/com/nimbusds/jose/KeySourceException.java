@@ -46,5 +46,23 @@ public class KeySourceException extends JOSEException {
 	public KeySourceException(final String message, final Throwable cause) {
 		super(message, cause);
 	}
+
+	/**
+	 * Creates a new key source exception.
+	 *
+	 * @param cause The cause.
+	 */
+
+	public KeySourceException(Throwable cause) {
+		super(cause);
+	}
+
+	/**
+	 * Creates a new key source exception.
+	 */
+
+	public KeySourceException() {
+		super();
+	}
 }
 

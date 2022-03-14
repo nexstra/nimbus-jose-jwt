@@ -612,4 +612,13 @@ public class JWKSet implements Serializable {
 		
 		return new JWKSet(jwks);
 	}
+
+	public boolean isEmpty() {
+		return keys.isEmpty();
+	}
+
+	public int size() {
+		return keys.size();
+	}
+
 }

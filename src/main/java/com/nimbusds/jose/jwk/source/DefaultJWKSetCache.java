@@ -32,8 +32,10 @@ import com.nimbusds.jose.jwk.JWKSet;
  * @author Vladimir Dzhuvinov
  * @author Sarvesh Sharma
  * @version 2021-01-08
+ * @deprecated see {@linkplain RemoteJWKSet}.
  */
 @ThreadSafe
+@Deprecated
 public class DefaultJWKSetCache implements JWKSetCache {
 	
 	

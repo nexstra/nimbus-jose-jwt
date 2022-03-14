@@ -72,8 +72,10 @@ import com.nimbusds.jose.util.ResourceRetriever;
  * @author Vladimir Dzhuvinov
  * @author Andreas Huber
  * @version 2022-01-30
+ * @deprecated Prefer to construct a {@linkplain JWKSource} using {@linkplain JWKSourceBuilder}.
  */
 @ThreadSafe
+@Deprecated
 public class RemoteJWKSet<C extends SecurityContext> implements JWKSource<C> {
 
 

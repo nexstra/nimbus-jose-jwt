@@ -30,7 +30,9 @@ import com.nimbusds.jose.jwk.JWKSet;
  *
  * @author Vladimir Dzhuvinov
  * @version 2020-12-27
+ * @deprecated see {@linkplain RemoteJWKSet}.
  */
+@Deprecated
 @Immutable
 public final class JWKSetWithTimestamp {
 

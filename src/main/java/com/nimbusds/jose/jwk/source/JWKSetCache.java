@@ -27,7 +27,9 @@ import com.nimbusds.jose.jwk.JWKSet;
  * @author Vladimir Dzhuvinov
  * @author Sarvesh Sharma
  * @version 2020-03-11
+ * @deprecated see {@linkplain RemoteJWKSet}.
  */
+@Deprecated
 public interface JWKSetCache {
 	
 	

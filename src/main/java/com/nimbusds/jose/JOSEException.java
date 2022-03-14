@@ -51,4 +51,23 @@ public class JOSEException extends Exception {
 
 		super(message, cause);
 	}
+
+	/**
+	 * Creates a new JOSE exception with the specified cause.
+	 *
+	 * @param cause The exception cause.
+	 */
+
+	public JOSEException(Throwable cause) {
+		super(cause);
+	}
+
+	/**
+	 * Creates a new JOSE exception with the specified cause.
+	 */
+
+	public JOSEException() {
+		super();
+	}
+
 }
