@@ -110,20 +110,21 @@ public class IOUtils {
 		return readInputStreamToString(new FileInputStream(file), charset);
 	}
 	
-	/**
-	 * 
-	 * Closes a {@linkplain Closable} without throwing an {@linkplain IOException}.
-	 * 
-	 * @param closable target
-	 */
 	
-	public static void closeSilently(Closeable closable) {
+	/**
+	 * Closes a {@linkplain Closeable} without throwing an
+	 * {@linkplain IOException}.
+	 * 
+	 * @param closeable The closeable.
+	 */
+	public static void closeSilently(final Closeable closeable) {
 		try {
-			closable.close();
+			closeable.close();
 		} catch (IOException e) {
 			// ignore
 		}
 	}
+	
 	
 	/**
 	 * Prevents public instantiation.
