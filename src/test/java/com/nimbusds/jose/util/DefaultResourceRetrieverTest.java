@@ -18,15 +18,15 @@
 package com.nimbusds.jose.util;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ServerSocket;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static net.jadler.Jadler.*;
@@ -38,9 +38,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 
-/**
- * Tests the default resource retriever.
- */
 public class DefaultResourceRetrieverTest {
 	
 
@@ -426,5 +423,41 @@ public class DefaultResourceRetrieverTest {
 			.havingHeader("User-Agent", equalTo(userAgentHeaderValue))
 			.havingHeader("MultipleValues", equalTo(multipleValueHeader))
 			.receivedOnce();
+	}
+	
+	
+	@Test
+	public void testFileResource() throws IOException {
+		
+		File file = File.createTempFile("temp", null);
+		
+		final String content = "Hello, world!";
+		
+		Files.write(file.toPath(), content.getBytes(StandardCharsets.UTF_8));
+		
+		URL url = new URL("file:///" + file.getAbsolutePath());
+		
+		Resource resource = new DefaultResourceRetriever().retrieveResource(url);
+		
+		assertEquals(content, resource.getContent());
+		assertNull(resource.getContentType());
+		
+		file.deleteOnExit();
+	}
+	
+	
+	@Test
+	public void testFileResourceNotFound() throws IOException {
+		
+		String filePath = "/" + UUID.randomUUID();
+		
+		URL url = new URL("file://" + filePath);
+		
+		try {
+			new DefaultResourceRetriever().retrieveResource(url);
+			fail();
+		} catch (IOException e) {
+			assertEquals(filePath + " (No such file or directory)", e.getMessage());
+		}
 	}
 }

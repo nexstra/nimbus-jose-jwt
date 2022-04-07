@@ -23,7 +23,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.net.URLConnection;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.HttpsURLConnection;
@@ -33,14 +33,15 @@ import net.jcip.annotations.ThreadSafe;
 
 
 /**
- * The default retriever of resources specified by URL. Provides setting of a
- * HTTP proxy, HTTP connect and read timeouts as well as a size limit of the
- * retrieved entity. Caching header directives are not honoured.
+ * The default retriever of resources specified by HTTP(S) or file based URL.
+ * Provides setting of a HTTP proxy, HTTP connect and read timeouts as well as
+ * a size limit of the retrieved entity. Caching header directives are not
+ * honoured.
  *
  * @author Vladimir Dzhuvinov
  * @author Artun Subasi
  * @author Imre Paladji
- * @version 2020-12-14
+ * @version 2022-04-07
  */
 @ThreadSafe
 public class DefaultResourceRetriever extends AbstractRestrictedResourceRetriever implements RestrictedResourceRetriever {
@@ -234,18 +235,24 @@ public class DefaultResourceRetriever extends AbstractRestrictedResourceRetrieve
 	public Resource retrieveResource(final URL url)
 		throws IOException {
 
-		HttpURLConnection con = null;
+		URLConnection con = null;
 		try {
-			con = openConnection(url);
+			if ("file".equals(url.getProtocol())) {
+				con = openFileConnection(url);
+			} else {
+				// TODO Switch to openHTTPConnected when the
+				// deprecated openConnection method is removed
+				con = openConnection(url);
+			}
 
 			con.setConnectTimeout(getConnectTimeout());
 			con.setReadTimeout(getReadTimeout());
 			
-			if (sslSocketFactory != null && con instanceof HttpsURLConnection) {
+			if (con instanceof HttpsURLConnection && sslSocketFactory != null) {
 				((HttpsURLConnection)con).setSSLSocketFactory(sslSocketFactory);
 			}
 			
-			if(getHeaders() != null && !getHeaders().isEmpty()) {
+			if (con instanceof HttpURLConnection && getHeaders() != null && !getHeaders().isEmpty()) {
 				for (Map.Entry<String, List<String>> entry : getHeaders().entrySet()) {
 					for (String value: entry.getValue()) {
 						con.addRequestProperty(entry.getKey(), value);
@@ -258,29 +265,43 @@ public class DefaultResourceRetriever extends AbstractRestrictedResourceRetrieve
 				content = IOUtils.readInputStreamToString(inputStream, StandardCharset.UTF_8);
 			}
 
-			// Check HTTP code + message
-			final int statusCode = con.getResponseCode();
-			final String statusMessage = con.getResponseMessage();
-
-			// Ensure 2xx status code
-			if (statusCode > 299 || statusCode < 200) {
-				throw new IOException("HTTP " + statusCode + ": " + statusMessage);
+			if (con instanceof HttpURLConnection) {
+				// Check HTTP code + message
+				HttpURLConnection httpCon = (HttpURLConnection) con;
+				final int statusCode = httpCon.getResponseCode();
+				final String statusMessage = httpCon.getResponseMessage();
+				
+				// Ensure 2xx status code
+				if (statusCode > 299 || statusCode < 200) {
+					throw new IOException("HTTP " + statusCode + ": " + statusMessage);
+				}
 			}
+			
+			String contentType = con instanceof HttpURLConnection ? con.getContentType() : null;
+			
+			return new Resource(content, contentType);
 
-			return new Resource(content, con.getContentType());
-
-		} catch (ClassCastException e) {
-			throw new IOException("Couldn't open HTTP(S) connection: " + e.getMessage(), e);
+		} catch (Exception e) {
+			
+			if (e instanceof IOException) {
+				throw e;
+			}
+			
+			throw new IOException("Couldn't open URL connection: " + e.getMessage(), e);
+			
 		} finally {
-			if (disconnectAfterUse && con != null) {
-				con.disconnect();
+			if (disconnectAfterUse && con instanceof HttpURLConnection) {
+				((HttpURLConnection) con).disconnect();
 			}
 		}
 	}
+	
 
 	/**
 	 * Opens a connection the specified HTTP(S) URL. Uses the configured
 	 * {@link Proxy} if available.
+	 *
+	 * @see #openHTTPConnection
 	 *
 	 * @param url The URL of the resource. Its scheme must be HTTP or
 	 *            HTTPS. Must not be {@code null}.
@@ -290,16 +311,51 @@ public class DefaultResourceRetriever extends AbstractRestrictedResourceRetrieve
 	 * @throws IOException If the HTTP(S) connection to the specified URL
 	 *                     failed.
 	 */
+	@Deprecated
 	protected HttpURLConnection openConnection(final URL url) throws IOException {
+		return openHTTPConnection(url);
+	}
+	
+
+	/**
+	 * Opens a connection the specified HTTP(S) URL. Uses the configured
+	 * {@link Proxy} if available.
+	 *
+	 * @param url The URL of the resource. Its scheme must be "http" or
+	 *            "https". Must not be {@code null}.
+	 *
+	 * @return The opened HTTP(S) connection
+	 *
+	 * @throws IOException If the HTTP(S) connection to the specified URL
+	 *                     failed.
+	 */
+	protected HttpURLConnection openHTTPConnection(final URL url) throws IOException {
 		if (proxy != null) {
 			return (HttpURLConnection)url.openConnection(proxy);
 		} else {
 			return (HttpURLConnection)url.openConnection();
 		}
 	}
+	
+	
+	/**
+	 * Opens a connection the specified file URL.
+	 *
+	 * @param url The URL of the resource. Its scheme must be "file". Must
+	 *            not be {@code null}.
+	 *
+	 * @return The opened file connection.
+	 *
+	 * @throws IOException If the file connection to the specified URL
+	 *                     failed.
+	 */
+	protected URLConnection openFileConnection(final URL url) throws IOException {
+		
+		return url.openConnection();
+	}
 
 
-	private InputStream getInputStream(final HttpURLConnection con, final int sizeLimit)
+	private InputStream getInputStream(final URLConnection con, final int sizeLimit)
 		throws IOException {
 
 		InputStream inputStream = con.getInputStream();
