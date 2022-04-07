@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.net.Proxy;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.cert.Certificate;
@@ -44,7 +43,7 @@ import com.nimbusds.jose.util.*;
  * of {@link JWK JSON Web Keys} (JWKs) as the value of its "keys" member.
  * Additional (custom) members of the JWK Set JSON object are also supported.
  *
- * <p>Example JSON Web Key (JWK) set:
+ * <p>Example JWK set:
  *
  * <pre>
  * {
@@ -70,7 +69,7 @@ import com.nimbusds.jose.util.*;
  *
  * @author Vladimir Dzhuvinov
  * @author Vedran Pavic
- * @version 2021-02-01
+ * @version 2022-04-07
  */
 @Immutable
 public class JWKSet implements Serializable {
@@ -99,7 +98,7 @@ public class JWKSet implements Serializable {
 
 
 	/**
-	 * Creates a new empty JSON Web Key (JWK) set.
+	 * Creates a new empty JWK set.
 	 */
 	public JWKSet() {
 
@@ -108,7 +107,7 @@ public class JWKSet implements Serializable {
 
 
 	/**
-	 * Creates a new JSON Web Key (JWK) set with a single key.
+	 * Creates a new JWK set with a single key.
 	 *
 	 * @param key The JWK. Must not be {@code null}.
 	 */
@@ -123,7 +122,7 @@ public class JWKSet implements Serializable {
 
 
 	/**
-	 * Creates a new JSON Web Key (JWK) set with the specified keys.
+	 * Creates a new JWK set with the specified keys.
 	 *
 	 * @param keys The JWK list. Must not be {@code null}.
 	 */
@@ -134,8 +133,8 @@ public class JWKSet implements Serializable {
 
 
 	/**
-	 * Creates a new JSON Web Key (JWK) set with the specified keys and
-	 * additional custom members.
+	 * Creates a new JWK set with the specified keys and additional custom
+	 * members.
 	 *
 	 * @param keys          The JWK list. Must not be {@code null}.
 	 * @param customMembers The additional custom members. Must not be
@@ -154,26 +153,46 @@ public class JWKSet implements Serializable {
 
 
 	/**
-	 * Gets the keys (ordered) of this JSON Web Key (JWK) set.
+	 * Returns the keys (ordered) of this JWK set.
 	 *
-	 * @return The keys, empty list if none.
+	 * @return The keys as an unmodifiable list, empty list if none.
 	 */
 	public List<JWK> getKeys() {
 
 		return keys;
 	}
-
+	
 	
 	/**
-	 * Gets the key from this JSON Web Key (JWK) set as identified by its 
-	 * Key ID (kid) member.
-	 * 
-	 * <p>If more than one key exists in the JWK Set with the same 
+	 * Returns {@code true} if this JWK set is empty.
+	 *
+	 * @return {@code true} if empty, else {@code false}.
+	 */
+	public boolean isEmpty() {
+		return keys.isEmpty();
+	}
+	
+	
+	/**
+	 * Returns the number of keys in this JWK set.
+	 *
+	 * @return The number of keys, zero if none.
+	 */
+	public int size() {
+		return keys.size();
+	}
+	
+	
+	/**
+	 * Returns the key from this JWK set as identified by its Key ID (kid)
+	 * member.
+	 *
+	 * <p>If more than one key exists in the JWK Set with the same
 	 * identifier, this function returns only the first one in the set.
 	 *
 	 * @param kid They key identifier.
 	 *
-	 * @return The key identified by {@code kid} or {@code null} if no key 
+	 * @return The key identified by {@code kid} or {@code null} if no key
 	 *         exists.
 	 */
 	public JWK getKeyByKeyId(String kid) {
@@ -212,22 +231,23 @@ public class JWKSet implements Serializable {
 		}
 		return false;
 	}
-
-
+	
+	
 	/**
-	 * Gets the additional custom members of this JSON Web Key (JWK) set.
+	 * Returns the additional custom members of this (JWK) set.
 	 *
-	 * @return The additional custom members, empty map if none.
+	 * @return The additional custom members as a unmodifiable map, empty
+	 *         map if none.
 	 */
 	public Map<String,Object> getAdditionalMembers() {
 
 		return customMembers;
 	}
-
-
+	
+	
 	/**
-	 * Returns a copy of this JSON Web Key (JWK) set with all private keys
-	 * and parameters removed.
+	 * Returns a copy of this (JWK) set with all private keys and
+	 * parameters removed.
 	 *
 	 * @return A copy of this JWK set with all private keys and parameters
 	 *         removed.
@@ -247,11 +267,11 @@ public class JWKSet implements Serializable {
 
 		return new JWKSet(publicKeyList, customMembers);
 	}
-
-
+	
+	
 	/**
-	 * Returns the JSON object representation of this JSON Web Key (JWK) 
-	 * set. Only public keys will be included. Use the alternative
+	 * Returns the JSON object representation of this JWK set. Only public
+	 * keys will be included. Use the alternative
 	 * {@link #toJSONObject(boolean)} method to include all key material.
 	 *
 	 * @return The JSON object representation.
@@ -260,11 +280,10 @@ public class JWKSet implements Serializable {
 
 		return toJSONObject(true);
 	}
-
-
+	
+	
 	/**
-	 * Returns the JSON object representation of this JSON Web Key (JWK) 
-	 * set.
+	 * Returns the JSON object representation of this JWK set.
 	 *
 	 * @param publicKeysOnly Controls the inclusion of private keys and
 	 *                       parameters into the output JWK members. If
@@ -300,11 +319,10 @@ public class JWKSet implements Serializable {
 
 		return o;
 	}
-
-
+	
+	
 	/**
-	 * Returns the JSON object string representation of this JSON Web Key
-	 * (JWK) set.
+	 * Returns the JSON object string representation of this JWK set.
 	 *
 	 * @param publicKeysOnly Controls the inclusion of private keys and
 	 *                       parameters into the output JWK members. If
@@ -318,11 +336,11 @@ public class JWKSet implements Serializable {
 
 		return JSONObjectUtils.toJSONString(toJSONObject(publicKeysOnly));
 	}
-
-
+	
+	
 	/**
-	 * Returns the JSON object string representation of this JSON Web Key
-	 * (JWK) set. Only public keys will be included. Use the alternative
+	 * Returns the JSON object string representation of this JWK set. Only
+	 * public keys will be included. Use the alternative
 	 * {@link #toString(boolean)} method to include all key material.
 	 *
 	 * @return The JSON object string representation. Only public keys will
@@ -333,35 +351,34 @@ public class JWKSet implements Serializable {
 
 		return toString(true);
 	}
-
-
+	
+	
 	/**
-	 * Parses the specified string representing a JSON Web Key (JWK) set.
+	 * Parses the specified string representing a JWK set.
 	 *
 	 * @param s The string to parse. Must not be {@code null}.
 	 *
 	 * @return The JWK set.
 	 *
 	 * @throws ParseException If the string couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 *                        JWK set.
 	 */
 	public static JWKSet parse(final String s)
 		throws ParseException {
 
 		return parse(JSONObjectUtils.parse(s));
 	}
-
-
+	
+	
 	/**
-	 * Parses the specified JSON object representing a JSON Web Key (JWK) 
-	 * set.
+	 * Parses the specified JSON object representing a JWK set.
 	 *
 	 * @param json The JSON object to parse. Must not be {@code null}.
 	 *
 	 * @return The JWK set.
 	 *
 	 * @throws ParseException If the string couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 *                        JWK set.
 	 */
 	public static JWKSet parse(final Map<String, Object> json)
 		throws ParseException {
@@ -409,46 +426,46 @@ public class JWKSet implements Serializable {
 		
 		return new JWKSet(keys, additionalMembers);
 	}
-
-
+	
+	
 	/**
-	 * Loads a JSON Web Key (JWK) set from the specified input stream.
+	 * Loads a JWK set from the specified input stream.
 	 *
 	 * @param inputStream The JWK set input stream. Must not be {@code null}.
 	 *
 	 * @return The JWK set.
 	 *
 	 * @throws IOException    If the input stream couldn't be read.
-	 * @throws ParseException If the input stream couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 * @throws ParseException If the input stream couldn't be parsed to a
+	 *                        valid JWK set.
 	 */
 	public static JWKSet load(final InputStream inputStream)
 		throws IOException, ParseException {
 
 		return parse(IOUtils.readInputStreamToString(inputStream, StandardCharset.UTF_8));
 	}
-
-
+	
+	
 	/**
-	 * Loads a JSON Web Key (JWK) set from the specified file.
+	 * Loads a JWK set from the specified file.
 	 *
 	 * @param file The JWK set file. Must not be {@code null}.
 	 *
 	 * @return The JWK set.
 	 *
 	 * @throws IOException    If the file couldn't be read.
-	 * @throws ParseException If the file couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 * @throws ParseException If the file couldn't be parsed to a valid JWK
+	 *                        set.
 	 */
 	public static JWKSet load(final File file)
 		throws IOException, ParseException {
 
 		return parse(IOUtils.readFileToString(file, StandardCharset.UTF_8));
 	}
-
-
+	
+	
 	/**
-	 * Loads a JSON Web Key (JWK) set from the specified URL.
+	 * Loads a JWK set from the specified URL.
 	 *
 	 * @param url            The JWK set URL. Must not be {@code null}.
 	 * @param connectTimeout The URL connection timeout, in milliseconds.
@@ -461,8 +478,8 @@ public class JWKSet implements Serializable {
 	 * @return The JWK set.
 	 *
 	 * @throws IOException    If the file couldn't be read.
-	 * @throws ParseException If the file couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 * @throws ParseException If the file couldn't be parsed to a valid JWK
+	 *                        set.
 	 */
 	public static JWKSet load(final URL url,
 				  final int connectTimeout,
@@ -472,10 +489,10 @@ public class JWKSet implements Serializable {
 
 		return load(url, connectTimeout, readTimeout, sizeLimit, null);
 	}
-
-
+	
+	
 	/**
-	 * Loads a JSON Web Key (JWK) set from the specified URL.
+	 * Loads a JWK set from the specified URL.
 	 *
 	 * @param url            The JWK set URL. Must not be {@code null}.
 	 * @param connectTimeout The URL connection timeout, in milliseconds.
@@ -491,8 +508,8 @@ public class JWKSet implements Serializable {
 	 * @return The JWK set.
 	 *
 	 * @throws IOException    If the file couldn't be read.
-	 * @throws ParseException If the file couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 * @throws ParseException If the file couldn't be parsed to a valid JWK
+	 *                        set.
 	 */
 	public static JWKSet load(final URL url,
 				  final int connectTimeout,
@@ -509,18 +526,18 @@ public class JWKSet implements Serializable {
 		Resource resource = resourceRetriever.retrieveResource(url);
 		return parse(resource.getContent());
 	}
-
-
+	
+	
 	/**
-	 * Loads a JSON Web Key (JWK) set from the specified URL.
+	 * Loads a JWK set from the specified URL.
 	 *
 	 * @param url The JWK set URL. Must not be {@code null}.
 	 *
 	 * @return The JWK set.
 	 *
 	 * @throws IOException    If the file couldn't be read.
-	 * @throws ParseException If the file couldn't be parsed to a valid
-	 *                        JSON Web Key (JWK) set.
+	 * @throws ParseException If the file couldn't be parsed to a valid JWK
+	 *                        set.
 	 */
 	public static JWKSet load(final URL url)
 		throws IOException, ParseException {
@@ -530,7 +547,7 @@ public class JWKSet implements Serializable {
 	
 	
 	/**
-	 * Loads a JSON Web Key (JWK) set from the specified JCA key store. Key
+	 * Loads a JWK set from the specified JCA key store. Key
 	 * conversion exceptions are silently swallowed. PKCS#11 stores are
 	 * also supported. Requires BouncyCastle.
 	 *
@@ -612,13 +629,4 @@ public class JWKSet implements Serializable {
 		
 		return new JWKSet(jwks);
 	}
-
-	public boolean isEmpty() {
-		return keys.isEmpty();
-	}
-
-	public int size() {
-		return keys.size();
-	}
-
 }
