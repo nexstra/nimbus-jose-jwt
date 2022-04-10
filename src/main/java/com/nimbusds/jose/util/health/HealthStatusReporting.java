@@ -36,7 +36,7 @@ public interface HealthStatusReporting <C extends SecurityContext> {
 	 *
 	 * @throws UnsupportedOperationException If reporting is not supported.
 	 *
-	 * @return The health status.
+	 * @return The health status, {@code null} if unknown.
 	 */
 	HealthStatus reportHealthStatus(final boolean refresh, final C context);
 
