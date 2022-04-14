@@ -17,75 +17,79 @@
 
 package com.nimbusds.jose.jwk.source;
 
+import net.jcip.annotations.ThreadSafe;
+
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
 
 
 /**
- * 
- * {@linkplain JWKSetSource} that limits the number of invocations per time
- * unit. This guards against frequent, potentially costly, downstream calls.
- * <br>
- * <br>
- * Per default, two invocations per time period is allowed, so that, under normal
- * operations, there is always one invocation left in case the JWKs are rotated and 
- * results in an unknown key being requested (triggering a refresh of the keys) by
- * a legitimate party.
- *   
- * The other request is (sometimes) consumed by background refreshes. 
+ * {@linkplain JWKSetSource} that limits the number of requests in a time
+ * period. Intended to guard against frequent, potentially costly, downstream
+ * calls.
+ *
+ * <b>Two invocations per time period are allowed, so that, under normal
+ * operation, there is always one invocation left in case the keys are rotated
+ * and this results in triggering a refresh of the JWK set. The other request
+ * is (sometimes) consumed by background refreshes.
+ *
+ * @author Thomas Rørvik Skjølberg
+ * @version 2022-04-09
  */
+@ThreadSafe
+public class RateLimitedJWKSetSource<C extends SecurityContext> extends JWKSetSourceWrapper<C> {
 
-public class RateLimitedJWKSetSource<C extends SecurityContext> extends BaseJWKSetSource<C> {
-
-	public static interface Listener<C extends SecurityContext> extends JWKSetSourceListener<C> {
-		void onRateLimited(long duration, long remaining, C context);
+	public interface Listener<C extends SecurityContext> extends JWKSetSourceListener<C> {
+		void onRateLimited(final long duration, final long remaining, final C context);
 	}
 	
-	private final Listener<C> listener;
-	
-	// interval duration
-	private final long duration;
-	private long nextLimit = -1L;
+	private final long minTimeInterval;
+	private long nextOpeningTime = -1L;
 	private int counter = 0;
+	private final Listener<C> listener;
 
+	
 	/**
-	 * Creates a new JWK set source that throttles the number of requests for a JWKSet.
+	 * Creates a new JWK set source that limits the number of requests.
 	 *
-	 * @param duration minimum number of milliseconds per two downstream requests.
-	 * @param source source to request JWK sets from when within the rate limit.
+	 * @param source          The JWK set source to decorate. Must not be
+	 *                        {@code null}.
+	 * @param minTimeInterval The minimum allowed time interval between two
+	 *                        JWK set retrievals, in milliseconds.
+	 * @param listener        The listener, {@code null} if not specified.
 	 */
-	public RateLimitedJWKSetSource(JWKSetSource<C> source, long duration, Listener<C> listener) {
+	public RateLimitedJWKSetSource(final JWKSetSource<C> source, final long minTimeInterval, final Listener<C> listener) {
 		super(source);
-		this.duration = duration;
+		this.minTimeInterval = minTimeInterval;
 		this.listener = listener;
 	}
-
+	
+	
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate, C context) throws KeySourceException {
+	public JWKSet getJWKSet(final boolean forceReload, final long currentTime, final C context)
+		throws KeySourceException {
 		
 		// implementation note: this code is not intended to run many parallel threads
 		// for the same instance, thus use of synchronized will not cause congestion
 		
-		boolean rateLimited;
-		synchronized(this) {
-			if (nextLimit <= time) {
-				nextLimit = time + duration;
+		boolean rateLimitHit;
+		synchronized (this) {
+			if (nextOpeningTime <= currentTime) {
+				nextOpeningTime = currentTime + minTimeInterval;
 				counter = 1;
-				
-				rateLimited = false;
+				rateLimitHit = false;
 			} else {
-				rateLimited = counter <= 0; 
-				if(!rateLimited) {
+				rateLimitHit = counter <= 0;
+				if (! rateLimitHit) {
 					counter--;
 				}
 			}
 		}
-		if(rateLimited) {
-			listener.onRateLimited(duration, nextLimit - time, context);
+		if (rateLimitHit) {
+			listener.onRateLimited(minTimeInterval, nextOpeningTime - currentTime, context);
 			throw new RateLimitReachedException();
 		}
-		return source.getJWKSet(time, forceUpdate, context);
+		return getSource().getJWKSet(forceReload, currentTime, context);
 	}
-
 }

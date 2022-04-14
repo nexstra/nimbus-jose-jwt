@@ -20,21 +20,26 @@ package com.nimbusds.jose.jwk.source;
 
 import java.util.List;
 
+import net.jcip.annotations.Immutable;
+
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
-import net.jcip.annotations.Immutable;
+import com.nimbusds.jose.util.health.HealthReport;
+import com.nimbusds.jose.util.health.HealthStatus;
+import com.nimbusds.jose.util.health.HealthStatusReporting;
 
 
 /**
  * JSON Web Key (JWK) source backed by an immutable JWK set.
  *
  * @author Vladimir Dzhuvinov
- * @version 2016-04-10
+ * @author Thomas Rørvik Skjølberg
+ * @version 2022-04-09
  */
 @Immutable
-public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C>, JWKSetHealthSource<C> {
+public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C>, HealthStatusReporting<C> {
 
 
 	/**
@@ -77,13 +82,7 @@ public class ImmutableJWKSet<C extends SecurityContext> implements JWKSource<C>,
 
 
 	@Override
-	public JWKSetHealth getHealth(boolean refresh, C context) {
-		return new JWKSetHealth(System.currentTimeMillis(), true);
-	}
-
-
-	@Override
-	public boolean supportsHealth() {
-		return true;
+	public HealthReport reportHealthStatus(final boolean refresh, final C context) {
+		return new HealthReport(HealthStatus.HEALTHY);
 	}
 }

@@ -27,25 +27,13 @@ public interface HealthStatusReporting <C extends SecurityContext> {
 
 	
 	/**
-	 * Reports the health status if {@linkplain #supportsHealthStatus()
-	 * reporting is supported}.
+	 * Reports the health status.
 	 * 
 	 * @param refresh {@code true} to refresh the health status before
 	 *                returning the report.
 	 * @param context The context, {@code null} if not specified.
 	 *
-	 * @throws UnsupportedOperationException If reporting is not supported.
-	 *
 	 * @return The health status, {@code null} if unknown.
 	 */
-	HealthStatus reportHealthStatus(final boolean refresh, final C context);
-
-	
-	/**
-	 * Returns {@code true} if reporting of health status is supported.
-	 *
-	 * @return {@code true} if reporting of health status is supported,
-	 *         else {@code false}.
-	 */
-	boolean supportsHealthStatus();
+	HealthReport reportHealthStatus(final boolean refresh, final C context);
 }

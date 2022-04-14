@@ -1,7 +1,7 @@
 /*
  * nimbus-jose-jwt
  *
- * Copyright 2012-2022, Connect2id Ltd.
+ * Copyright 2012-2016, Connect2id Ltd and contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -15,12 +15,8 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.nimbusds.jose.jwk.source;
-
-import com.nimbusds.jose.proc.SecurityContext;
-
-public interface JWKSetHealthSourceListener<C extends SecurityContext> {
-
-	void onHealthRefreshException(Exception e, C context);
-	
-}
+/**
+ * {@linkplain com.nimbusds.jose.jwk.source.JWKSetSource} listeners providing
+ * standard Java logging.
+ */
+package com.nimbusds.jose.jwk.source.log;

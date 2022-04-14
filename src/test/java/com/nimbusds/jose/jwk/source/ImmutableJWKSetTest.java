@@ -18,14 +18,12 @@
 package com.nimbusds.jose.jwk.source;
 
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 
-import com.nimbusds.jose.jwk.*;
 import junit.framework.TestCase;
+
+import com.nimbusds.jose.jwk.*;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 
 
 public class ImmutableJWKSetTest extends TestCase {
@@ -34,18 +32,13 @@ public class ImmutableJWKSetTest extends TestCase {
 	public void testRun()
 		throws Exception {
 
-		KeyPairGenerator pairGen = KeyPairGenerator.getInstance("RSA");
-		pairGen.initialize(2048);
-		KeyPair keyPair = pairGen.generateKeyPair();
-
-		RSAKey rsaJWK = new RSAKey.Builder((RSAPublicKey)keyPair.getPublic())
-			.privateKey((RSAPrivateKey)keyPair.getPrivate())
+		RSAKey rsaJWK = new RSAKeyGenerator(2048)
 			.keyID("1")
-			.build();
+			.generate();
 
 		JWKSet jwkSet = new JWKSet(rsaJWK);
 
-		ImmutableJWKSet immutableJWKSet = new ImmutableJWKSet(jwkSet);
+		ImmutableJWKSet<?> immutableJWKSet = new ImmutableJWKSet<>(jwkSet);
 
 		assertEquals(jwkSet, immutableJWKSet.getJWKSet());
 

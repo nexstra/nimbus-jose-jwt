@@ -1,7 +1,7 @@
 /*
  * nimbus-jose-jwt
  *
- * Copyright 2012-2022, Connect2id Ltd.
+ * Copyright 2012-2016, Connect2id Ltd and contributors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use
  * this file except in compliance with the License. You may obtain a copy of the
@@ -15,30 +15,18 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.nimbusds.jose.jwk.source;
+package com.nimbusds.jose.jwk.source.log;
 
-import com.nimbusds.jose.KeySourceException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- * 
- * Exceptions assumed to be caused by server.
- * 
- */
+public abstract class AbstractJWKSetSourceListener {
 
-public class JWKSetServiceException extends KeySourceException {
+	protected final Level level;
+	protected final Logger logger;
 
-	private static final long serialVersionUID = 1L;
-
-	public JWKSetServiceException(String message) {
-		super(message);
+	public AbstractJWKSetSourceListener(final Level level, final Logger logger) {
+		this.level = level;
+		this.logger = logger;
 	}
-
-	public JWKSetServiceException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public JWKSetServiceException(Throwable cause) {
-		super(cause);
-	}
-
 }

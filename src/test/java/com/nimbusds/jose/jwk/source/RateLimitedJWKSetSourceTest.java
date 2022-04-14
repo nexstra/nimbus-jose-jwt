@@ -17,71 +17,88 @@
 
 package com.nimbusds.jose.jwk.source;
 
-import org.junit.Before;
-import org.junit.Test;
 
-import com.nimbusds.jose.proc.SecurityContext;
+import java.util.logging.Level;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.logging.Level;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.nimbusds.jose.jwk.source.log.RateLimitedJWKSetSourceLogger;
+import com.nimbusds.jose.proc.SecurityContext;
 
 public class RateLimitedJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private RateLimitedJWKSetSource<SecurityContext> provider;
+	private RateLimitedJWKSetSource<SecurityContext> source;
 
-	private int duration = 30 * 1000;
+	private final int minTimeInterval = 30_000;
 	
-	private RateLimitedJWKSetSource.Listener<SecurityContext> listener = new DefaultRateLimitedJWKSetSourceListener<SecurityContext>(Level.INFO);
+	private RateLimitedJWKSetSource.Listener<SecurityContext> listener = new RateLimitedJWKSetSourceLogger<SecurityContext>(Level.INFO);
 	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RateLimitedJWKSetSource<>(delegate, duration, listener);
+		source = new RateLimitedJWKSetSource<>(delegate, minTimeInterval, listener);
 	}
 
 	@Test
 	public void testShouldFailToGetWhenBucketIsEmpty() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis() + 1, false, context), jwks);
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis() + 1, context), jwkSet);
 		try {
-			provider.getJWKSet(System.currentTimeMillis(), false, context);
+			source.getJWKSet(false, System.currentTimeMillis(), context);
 			fail();
 		} catch(RateLimitReachedException e) {
 			// pass
+			assertNull(e.getMessage());
+		}
+	}
+
+	@Test
+	public void testShouldFailToGetWhenBucketIsEmpty_forceUpdate() throws Exception {
+		when(delegate.getJWKSet(eq(true), anyLong(), anySecurityContext())).thenReturn(jwkSet);
+		assertEquals(source.getJWKSet(true, System.currentTimeMillis(), context), jwkSet);
+		assertEquals(source.getJWKSet(true, System.currentTimeMillis() + 1, context), jwkSet);
+		try {
+			source.getJWKSet(true, System.currentTimeMillis(), context);
+			fail();
+		} catch(RateLimitReachedException e) {
+			// pass
+			assertNull(e.getMessage());
 		}
 	}
 	
 	@Test
 	public void testRefillBucket() throws Exception {
+		
 		long time = System.currentTimeMillis();
 		
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(time, false, context), jwks);
-		assertEquals(provider.getJWKSet(time + 1, false, context), jwks);
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet);
+		assertEquals(source.getJWKSet(false, time, context), jwkSet);
+		assertEquals(source.getJWKSet(false, time + 1, context), jwkSet);
 		try {
-			provider.getJWKSet(time + 2, false, context);
+			source.getJWKSet(false, time + 2, context);
 			fail();
 		} catch(RateLimitReachedException e) {
 			// pass
+			assertNull(e.getMessage());
 		}
 		
-		assertEquals(provider.getJWKSet(time + duration, false, context), jwks);
-		
+		assertEquals(source.getJWKSet(false, time + minTimeInterval, context), jwkSet);
 	}
 
 	@Test
 	public void testShouldGetWhenBucketHasTokensAvailable() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
-
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
-		verify(delegate).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet);
+		
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
+		verify(delegate).getJWKSet(eq(false), anyLong(), anySecurityContext());
 	}
-
 }

@@ -17,20 +17,38 @@
 
 package com.nimbusds.jose.jwk.source;
 
-public class JWKSetUnavailableException extends JWKSetServiceException {
+
+import com.nimbusds.jose.KeySourceException;
+
+
+/**
+ * JWK set unavailable exception.
+ *
+ * @author Thomas Rørvik Skjølberg
+ * @version 2022-09-04
+ */
+public class JWKSetUnavailableException extends KeySourceException {
 
 	private static final long serialVersionUID = 1L;
-
-	public JWKSetUnavailableException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public JWKSetUnavailableException(String message) {
+	
+	
+	/**
+	 * Creates a new JWK set unavailable exception.
+	 *
+	 * @param message The message, {@code null} if not specified.
+	 */
+	public JWKSetUnavailableException(final String message) {
 		super(message);
 	}
-
-	public JWKSetUnavailableException(Throwable cause) {
-		super(cause);
+	
+	
+	/**
+	 * Creates a new JWK set unavailable exception.
+	 *
+	 * @param message The message, {@code null} if not specified.
+	 * @param cause   The cause, {@code null} if not specified.
+	 */
+	public JWKSetUnavailableException(final String message, final Throwable cause) {
+		super(message, cause);
 	}
-
 }

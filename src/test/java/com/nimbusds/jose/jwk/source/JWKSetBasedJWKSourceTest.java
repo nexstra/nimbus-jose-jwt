@@ -65,7 +65,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 
-public class UrlJWKSourceTest {
+public class JWKSetBasedJWKSourceTest {
 
 	private static final RSAKey RSA_JWK_1;
 	private static final RSAKey RSA_JWK_2;
@@ -124,7 +124,7 @@ public class UrlJWKSourceTest {
 				.withHeader("Content-Type", "application/json")
 				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
-		UrlJWKSource<SecurityContext> jwkSetSource = (UrlJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
+		JWKSetBasedJWKSource<SecurityContext> jwkSetSource = (JWKSetBasedJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -136,7 +136,7 @@ public class UrlJWKSourceTest {
 		assertEquals(1, matches.size());
 
 		JWKSetSource<SecurityContext> provider = jwkSetSource.getSource();
-		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false, new SimpleSecurityContext());
+		JWKSet out = provider.getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -162,7 +162,7 @@ public class UrlJWKSourceTest {
 		
 		DefaultResourceRetriever retriever = new DefaultResourceRetriever();
 
-		UrlJWKSource<SecurityContext> jwkSetSource = (UrlJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL, retriever).build();
+		JWKSetBasedJWKSource<SecurityContext> jwkSetSource = (JWKSetBasedJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL, retriever).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -174,7 +174,7 @@ public class UrlJWKSourceTest {
 		assertEquals(1, matches.size());
 
 		JWKSetSource<SecurityContext> provider = jwkSetSource.getSource();
-		JWKSet out = provider.getJWKSet(System.currentTimeMillis(), false, new SimpleSecurityContext());
+		JWKSet out = provider.getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -246,7 +246,7 @@ public class UrlJWKSourceTest {
 				}
 			});
 
-		UrlJWKSource<SecurityContext> jwkSetSource = (UrlJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL).rateLimited(0L).build();
+		JWKSetBasedJWKSource<SecurityContext> jwkSetSource = (JWKSetBasedJWKSource<SecurityContext>) JWKSourceBuilder.newBuilder(jwkSetURL).rateLimited(0L).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -258,7 +258,7 @@ public class UrlJWKSourceTest {
 		assertEquals(1, matches.size());
 
 		// Check cache
-		JWKSet out = jwkSetSource.getSource().getJWKSet(System.currentTimeMillis(), false, new SimpleSecurityContext());
+		JWKSet out = jwkSetSource.getSource().getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());
@@ -285,10 +285,10 @@ public class UrlJWKSourceTest {
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/jwks.json")
-				.respond()
-				.withStatus(404);
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/jwks.json")
+			.respond()
+			.withStatus(404);
 
 		JWKSource<SecurityContext> failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, (JWK) RSA_JWK_2)));
 
@@ -314,18 +314,18 @@ public class UrlJWKSourceTest {
 		URL failoverJWKSetURL = new URL("http://localhost:" + port() + "/failover-jwks.json");
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/jwks.json")
-				.respond()
-				.withStatus(404);
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/jwks.json")
+			.respond()
+			.withStatus(404);
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/failover-jwks.json")
-				.respond()
-				.withStatus(200)
-				.withHeader("Content-Type", "application/json")
-				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/failover-jwks.json")
+			.respond()
+			.withStatus(200)
+			.withHeader("Content-Type", "application/json")
+			.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
 		JWKSource<SecurityContext> failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
 
@@ -349,16 +349,16 @@ public class UrlJWKSourceTest {
 		URL failoverJWKSetURL = new URL("http://localhost:" + port() + "/failover-jwks.json");
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/jwks.json")
-				.respond()
-				.withStatus(404);
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/jwks.json")
+			.respond()
+			.withStatus(404);
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/failover-jwks.json")
-				.respond()
-				.withStatus(404);
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/failover-jwks.json")
+			.respond()
+			.withStatus(404);
 
 		JWKSource<SecurityContext> failover = JWKSourceBuilder.newBuilder(failoverJWKSetURL).build();
 
@@ -369,14 +369,14 @@ public class UrlJWKSourceTest {
 			fail();
 		} catch (KeySourceException e) {
 			assertEquals(
-					"Couldn't retrieve remote JWK set: " + jwkSetURL +
+					"Couldn't retrieve JWK set from URL: " + jwkSetURL +
 							"; Failover JWK source retrieval failed with: " +
-							"Couldn't retrieve remote JWK set: " + failoverJWKSetURL,
+							"Couldn't retrieve JWK set from URL: " + failoverJWKSetURL,
 					e.getMessage()
 			);
 			Throwable cause = e.getCause();
 			assertTrue(cause instanceof KeySourceException);
-			assertEquals("Couldn't retrieve remote JWK set: " + failoverJWKSetURL, cause.getMessage());
+			assertEquals("Couldn't retrieve JWK set from URL: " + failoverJWKSetURL, cause.getMessage());
 		}
 	}
 
@@ -387,17 +387,17 @@ public class UrlJWKSourceTest {
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/jwks.json")
-				.respond()
-				.withStatus(404);
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/jwks.json")
+			.respond()
+			.withStatus(404);
 
 		JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(jwkSetURL).build();
 
 		try {
 			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), new SimpleSecurityContext());
-		} catch (JWKSetTransferException e) {
-			assertEquals("Couldn't retrieve remote JWK set: " + jwkSetURL, e.getMessage());
+		} catch (JWKSetRetrievalException e) {
+			assertEquals("Couldn't retrieve JWK set from URL: " + jwkSetURL, e.getMessage());
 			assertTrue(e.getCause() instanceof FileNotFoundException);
 			assertEquals(jwkSetURL.toString(), e.getCause().getMessage());
 		}
@@ -416,8 +416,8 @@ public class UrlJWKSourceTest {
 		try {
 			jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().build()), null);
 			fail();
-		} catch (JWKSetTransferException e) {
-			assertEquals("Couldn't retrieve remote JWK set: Read timed out", e.getMessage());
+		} catch (JWKSetRetrievalException e) {
+			assertEquals("Couldn't retrieve JWK set from URL: Read timed out", e.getMessage());
 			assertTrue(e.getCause() instanceof SocketTimeoutException);
 			assertEquals("Read timed out", e.getCause().getMessage());
 		}
@@ -432,21 +432,21 @@ public class UrlJWKSourceTest {
 		URL jwkSetURL = new URL("http://localhost:" + port() + "/jwks.json");
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/jwks.json")
-				.respond()
-				.withDelay(800, TimeUnit.MILLISECONDS);
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/jwks.json")
+			.respond()
+			.withDelay(800, TimeUnit.MILLISECONDS);
 
 		onRequest()
-				.havingMethodEqualTo("GET")
-				.havingPathEqualTo("/failover-jwks.json")
-				.respond()
-				.withStatus(200)
-				.withHeader("Content-Type", "application/json")
-				.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
+			.havingMethodEqualTo("GET")
+			.havingPathEqualTo("/failover-jwks.json")
+			.respond()
+			.withStatus(200)
+			.withHeader("Content-Type", "application/json")
+			.withBody(JSONObjectUtils.toJSONString(jwkSet.toJSONObject(true)));
 
 		JWKSource<SecurityContext> failover = new ImmutableJWKSet<>(new JWKSet(Arrays.asList((JWK) RSA_JWK_1, RSA_JWK_2)));
-		FailoverJWKSource<?> jwkSetSource = (FailoverJWKSource<?>) JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
+		JWKSourceWithFailover<?> jwkSetSource = (JWKSourceWithFailover<?>) JWKSourceBuilder.newBuilder(jwkSetURL).failover(failover).build();
 
 		List<JWK> matches = jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID("1").build()), null);
 
@@ -542,13 +542,13 @@ public class UrlJWKSourceTest {
 
 		MutableJWKSetSource<SecurityContext> mutableSource = new MutableJWKSetSource<SecurityContext>() {
 			@Override
-			public JWKSet getJWKSet(long time, boolean forceUpdate, SecurityContext context) throws KeySourceException {
+			public JWKSet getJWKSet(boolean forceReload, long currentTime, SecurityContext context) throws KeySourceException {
 				invocationCounter.incrementAndGet();
-				return super.getJWKSet(time, forceUpdate, context);
+				return super.getJWKSet(forceReload, currentTime, context);
 			}
 		};
 		
-		mutableSource.setSet(jwkSetOld);
+		mutableSource.setJwkSet(jwkSetOld);
 		
 		final JWKSource<SecurityContext> jwkSetSource = JWKSourceBuilder.newBuilder(mutableSource).rateLimited(false).build();
 
@@ -556,7 +556,7 @@ public class UrlJWKSourceTest {
 		assertNotNull(jwkSetSource.get(new JWKSelector(new JWKMatcher.Builder().keyID(rsaJWKOld.getKeyID()).build()), null));
 		assertEquals("Retriever must be called exactly once", 1, invocationCounter.intValue());
 
-		mutableSource.setSet(jwkSetNew);
+		mutableSource.setJwkSet(jwkSetNew);
 		
 		ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 		List<Future<List<JWK>>> futures = new ArrayList<>();

@@ -18,58 +18,32 @@
 package com.nimbusds.jose.util.health;
 
 
-import net.jcip.annotations.Immutable;
-
-
 /**
  * Health status.
  */
-@Immutable
-public class HealthStatus {
-	
-	private final boolean isHealthy;
-	private final long timestamp;
+public enum HealthStatus {
 	
 	
 	/**
-	 * Creates a new health status.
-	 *
-	 * @param isHealthy {@code true} if healthy, else {@code false}.
+	 * Healthy.
 	 */
-	public HealthStatus(final boolean isHealthy) {
-		this(isHealthy, System.currentTimeMillis());
-	}
+	HEALTHY,
 	
 	
 	/**
-	 * Creates a new health status.
-	 *
-	 * @param isHealthy {@code true} if healthy, else {@code false}.
-	 * @param timestamp The timestamp, in milliseconds since the Unix
-	 *                  epoch.
+	 * Not healthy (error).
 	 */
-	public HealthStatus(final boolean isHealthy, final long timestamp) {
-		this.isHealthy = isHealthy;
-		this.timestamp = timestamp;
-	}
+	NOT_HEALTHY,
 	
 	
 	/**
-	 * Returns the health status.
-	 *
-	 * @return {@code true} if healthy, else {@code false}.
+	 * Unknown (health status currently not available).
 	 */
-	public boolean isHealthy() {
-		return isHealthy;
-	}
+	UNKNOWN,
 	
 	
 	/**
-	 * Returns the timestamp.
-	 *
-	 * @return The timestamp, in milliseconds since the Unix epoch.
+	 * Health status reporting not supported.
 	 */
-	public long getTimestamp() {
-		return timestamp;
-	}
+	NOT_SUPPORTED
 }

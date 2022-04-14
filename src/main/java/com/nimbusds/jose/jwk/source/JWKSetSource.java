@@ -17,27 +17,38 @@
 
 package com.nimbusds.jose.jwk.source;
 
-import com.nimbusds.jose.KeySourceException;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.proc.SecurityContext;
 
 import java.io.Closeable;
 
+import com.nimbusds.jose.KeySourceException;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.health.HealthStatusReporting;
+
+
 /**
- * Source of a set of JWK.
+ * JSON Web Key (JWK) set source with optional health status reporting.
+ *
+ * @author Thomas Rørvik Skjølberg
+ * @version 2022-04-09
  */
-public interface JWKSetSource<C extends SecurityContext> extends JWKSetHealthSource<C>, Closeable {
+public interface JWKSetSource<C extends SecurityContext> extends HealthStatusReporting<C>, Closeable {
 
+	
 	/**
-	 * Get a set of JWKs.
+	 * Gets the JWK set.
 	 *
-	 * @param currentTime current time in milliseconds since 1970. 
-	 * @param forceUpdate if true, bypass existing caches if 
-	 *        the current cache is older than the passed currentTime parameter 
-	 * @param context TODO
-	 * @return a set of JWKs
-	 * @throws KeySourceException if no list can be retrieved
+	 * @param forceReload If {@code true} and caching is present forces a
+	 *                    reloading of the JWK set when older than the
+	 *                    current time argument.
+	 * @param currentTime The current time, in milliseconds since the Unix
+	 *                    epoch.
+	 * @param context     Optional context, {@code null} if not required.
+	 *
+	 * @return The JWK set.
+	 *
+	 * @throws KeySourceException If JWK set retrieval failed.
 	 */
-	JWKSet getJWKSet(long currentTime, boolean forceUpdate, C context) throws KeySourceException;
-
+	JWKSet getJWKSet(final boolean forceReload, final long currentTime, final C context)
+		throws KeySourceException;
 }

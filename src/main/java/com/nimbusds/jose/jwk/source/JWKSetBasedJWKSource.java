@@ -18,36 +18,48 @@
 package com.nimbusds.jose.jwk.source;
 
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
+
+import net.jcip.annotations.ThreadSafe;
+
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
 import com.nimbusds.jose.proc.SecurityContext;
-import net.jcip.annotations.ThreadSafe;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
+import com.nimbusds.jose.util.health.HealthReport;
+import com.nimbusds.jose.util.health.HealthStatusReporting;
 
 
 /**
- * JSON Web Key (JWK) source. 
+ * JSON Web Key (JWK) set based JWK source.
+ *
+ * @author Thomas Rørvik Skjølberg
+ * @version 2022-04-09
  */
 @ThreadSafe
-public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Closeable, JWKSetHealthSource<C> {
+public class JWKSetBasedJWKSource<C extends SecurityContext> implements JWKSource<C>, Closeable, HealthStatusReporting<C> {
 
+	
 	private final JWKSetSource<C> source;
-
-	public UrlJWKSource(JWKSetSource<C> source) {
-		super();
+	
+	
+	/**
+	 * Creates a new JWK set based JWK source.
+	 *
+	 * @param source The JWK set source. Must not be {@code null}.
+	 */
+	public JWKSetBasedJWKSource(final JWKSetSource<C> source) {
+		Objects.requireNonNull(source);
 		this.source = source;
 	}
 
 	@Override
-	public List<JWK> get(JWKSelector jwkSelector, C context) throws KeySourceException {
-		return get(jwkSelector, System.currentTimeMillis(), context);
-	}
-
-	public List<JWK> get(JWKSelector jwkSelector, long time, C context) throws KeySourceException {
+	public List<JWK> get(final JWKSelector jwkSelector, final C context) throws KeySourceException {
+		
+		long currentTime = System.currentTimeMillis();
 		
 		// Get the list of JWKs and match against the selector
 		// if no matches, attempt to refresh the list of JWKs
@@ -60,31 +72,32 @@ public class UrlJWKSource<C extends SecurityContext> implements JWKSource<C>, Cl
 		// and used internally to check whether the cache is up to date; preventing
 		// unnecessary external calls
 		
-		List<JWK> select = jwkSelector.select(source.getJWKSet(time, false, context));
+		List<JWK> select = jwkSelector.select(source.getJWKSet(false, currentTime, context));
 		if (select.isEmpty()) {
-			select = jwkSelector.select(source.getJWKSet(time, true, context));
+			select = jwkSelector.select(source.getJWKSet(true, currentTime, context));
 		}
 		return select;
 	}
-
+	
+	
+	/**
+	 * Returns the underlying JWK set source.
+	 *
+	 * @return The JWK set source.
+	 */
+	public JWKSetSource<C> getSource() {
+		return source;
+	}
+	
+	
 	@Override
 	public void close() throws IOException {
 		source.close();
 	}
-
+	
+	
 	@Override
-	public JWKSetHealth getHealth(boolean refresh, C context) {
-		return source.getHealth(refresh, context);
+	public HealthReport reportHealthStatus(final boolean refresh, C context) {
+		return source.reportHealthStatus(refresh, context);
 	}
-
-	@Override
-	public boolean supportsHealth() {
-		return source.supportsHealth();
-	}
-
-	// for testing
-	JWKSetSource<C> getSource() {
-		return source;
-	}
-
 }

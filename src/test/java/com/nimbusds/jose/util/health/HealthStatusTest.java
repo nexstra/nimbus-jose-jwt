@@ -18,48 +18,18 @@
 package com.nimbusds.jose.util.health;
 
 
-import java.util.Date;
-
 import junit.framework.TestCase;
-
-import com.nimbusds.jwt.util.DateUtils;
 
 
 public class HealthStatusTest extends TestCase {
 
 
-	public void testMinimalConstructor_healthy() {
+	public void testConstants() {
 		
-		HealthStatus status = new HealthStatus(true);
-		assertTrue(status.isHealthy());
-		DateUtils.isWithin(DateUtils.fromSecondsSinceEpoch(status.getTimestamp() / 1000L), new Date(), 1);
-	}
-
-
-	public void testMinimalConstructor_notHealthy() {
-		
-		HealthStatus status = new HealthStatus(false);
-		assertFalse(status.isHealthy());
-		DateUtils.isWithin(DateUtils.fromSecondsSinceEpoch(status.getTimestamp() / 1000L), new Date(), 1);
-	}
-
-
-	public void testFullConstructor_healthy() {
-		
-		long timestamp = new Date().getTime();
-		
-		HealthStatus status = new HealthStatus(true, timestamp);
-		assertTrue(status.isHealthy());
-		assertEquals(timestamp, status.getTimestamp());
-	}
-
-
-	public void testFullConstructor_notHealthy() {
-		
-		long timestamp = new Date().getTime();
-		
-		HealthStatus status = new HealthStatus(false, timestamp);
-		assertFalse(status.isHealthy());
-		assertEquals(timestamp, status.getTimestamp());
+		assertEquals("HEALTHY",       HealthStatus.values()[0].name());
+		assertEquals("NOT_HEALTHY",   HealthStatus.values()[1].name());
+		assertEquals("UNKNOWN",       HealthStatus.values()[2].name());
+		assertEquals("NOT_SUPPORTED", HealthStatus.values()[3].name());
+		assertEquals(4, HealthStatus.values().length);
 	}
 }

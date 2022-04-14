@@ -34,7 +34,7 @@ public class ImmutableSecretTest extends TestCase {
 
 		byte[] secret = new byte[32];
 		new SecureRandom().nextBytes(secret);
-		ImmutableSecret immutableSecret = new ImmutableSecret(secret);
+		ImmutableSecret<?> immutableSecret = new ImmutableSecret<>(secret);
 		Assert.assertArrayEquals(secret, immutableSecret.getSecret());
 		Assert.assertArrayEquals(secret, immutableSecret.getSecretKey().getEncoded());
 		assertEquals(1, immutableSecret.getJWKSet().getKeys().size());
@@ -46,7 +46,7 @@ public class ImmutableSecretTest extends TestCase {
 		byte[] secret = new byte[32];
 		new SecureRandom().nextBytes(secret);
 		SecretKey secretKey = new SecretKeySpec(secret, "AES");
-		ImmutableSecret immutableSecret = new ImmutableSecret(secretKey);
+		ImmutableSecret<?> immutableSecret = new ImmutableSecret<>(secretKey);
 		Assert.assertArrayEquals(secret, immutableSecret.getSecret());
 		Assert.assertArrayEquals(secret, immutableSecret.getSecretKey().getEncoded());
 		assertEquals(1, immutableSecret.getJWKSet().getKeys().size());

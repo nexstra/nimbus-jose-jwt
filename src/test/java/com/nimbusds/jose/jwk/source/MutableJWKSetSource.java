@@ -1,23 +1,22 @@
 package com.nimbusds.jose.jwk.source;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.health.HealthReport;
+import com.nimbusds.jose.util.health.HealthStatus;
+
 
 public class MutableJWKSetSource<C extends SecurityContext> implements JWKSetSource<C> {
 
-	private JWKSet set;
-	
-	@Override
-	public JWKSetHealth getHealth(boolean refresh, C context) {
-		throw new UnsupportedOperationException(getClass().getName() + " does not support health requests");
-	}
+	private JWKSet jwkSet;
 
 	@Override
-	public boolean supportsHealth() {
-		return false;
+	public HealthReport reportHealthStatus(boolean refresh, C context) {
+		return new HealthReport(HealthStatus.NOT_SUPPORTED);
 	}
 
 	@Override
@@ -26,11 +25,12 @@ public class MutableJWKSetSource<C extends SecurityContext> implements JWKSetSou
 	}
 
 	@Override
-	public JWKSet getJWKSet(long time, boolean forceUpdate, C context) throws KeySourceException {
-		return set;
+	public JWKSet getJWKSet(final boolean forceReload, final long currentTime, final C context) throws KeySourceException {
+		return jwkSet;
 	}
 
-	public void setSet(JWKSet set) {
-		this.set = set;
+	public void setJwkSet(final JWKSet jwkSet) {
+		Objects.requireNonNull(jwkSet);
+		this.jwkSet = jwkSet;
 	}
 }

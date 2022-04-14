@@ -1421,3 +1421,11 @@ version 9.20 (2022-02-21)
 version 9.21 (2022-03-07)
     * Prevent construction and parsing of JWS and JWE headers with non-public
       key in "jwk" parameter (iss #467).
+
+version 9.21 (2022-04-14)
+    * DefaultResourceRetriever adds support for file based URLs.
+    * JWKSet adds isEmpty and size shorthand methods.
+    * IOUtils adds closeSilently(java.io.Closeable) method.
+    * New generic CachedObject class.
+    * New HealthStatusReporting interface, HealthReport class and HealthStatus
+      enum.

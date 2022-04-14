@@ -18,7 +18,9 @@
 package com.nimbusds.jose.jwk.source;
 
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.source.log.OutageTolerantJWKSetSourceLogger;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.cache.CachedObject;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -34,56 +36,56 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class OutageCachedJWKSetSourceTest extends AbstractDelegateSourceTest {
+public class OutageTolerantJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private OutageCachedJWKSetSource<SecurityContext> provider;
+	private OutageTolerantJWKSetSource<SecurityContext> source;
 
-	private OutageCachedJWKSetSource.Listener<SecurityContext> listener = new DefaultOutageCachedJWKSetSourceListener<>(Level.INFO, Level.WARNING);
+	private OutageTolerantJWKSetSource.Listener<SecurityContext> listener = new OutageTolerantJWKSetSourceLogger<>(Level.INFO, Level.WARNING);
 	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new OutageCachedJWKSetSource<>(delegate, 10 * 3600 * 1000, listener);
+		source = new OutageTolerantJWKSetSource<>(delegate, 10 * 3600 * 1000, listener);
 	}
 
 	@Test
 	public void testShouldUseDelegate() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
 	}
 
 	@Test
 	public void testShouldUseDelegateWhenCached() throws Exception {
 		JWKSet last = new JWKSet(Arrays.asList(jwk, jwk));
 
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks).thenReturn(last);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), last);
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet).thenReturn(last);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), last);
 	}
 
 	@Test
 	public void testShouldUseCacheWhenDelegateSigningKeyUnavailable() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
-		provider.getJWKSet(System.currentTimeMillis(), false, context);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
-		verify(delegate, times(2)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet).thenThrow(new JWKSetUnavailableException("TEST", null));
+		source.getJWKSet(false, System.currentTimeMillis(), context);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
+		verify(delegate, times(2)).getJWKSet(eq(false), anyLong(), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldNotUseExpiredCacheWhenDelegateSigningKeyUnavailable() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks).thenThrow(new JWKSetUnavailableException("TEST", null));
-		provider.getJWKSet(System.currentTimeMillis(), false, context);
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet).thenThrow(new JWKSetUnavailableException("TEST", null));
+		source.getJWKSet(false, System.currentTimeMillis(), context);
 
 		try {
-			provider.getJWKSet(provider.getExpires(System.currentTimeMillis() + 1), false, context);
+			source.getJWKSet(false, CachedObject.computeExpirationTime(System.currentTimeMillis() + 1, source.getTimeToLive()), context);
 			fail();
 		} catch(JWKSetUnavailableException e) {
-			// pass
+			assertEquals("TEST", e.getMessage());
 		}
 	}
 
 	@Test
 	public void testShouldGetBaseProvider() {
-		assertEquals(provider.getSource(), delegate);
+		assertEquals(source.getSource(), delegate);
 	}
 }

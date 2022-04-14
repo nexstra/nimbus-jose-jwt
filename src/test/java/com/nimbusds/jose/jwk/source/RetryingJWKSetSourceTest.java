@@ -20,6 +20,7 @@ package com.nimbusds.jose.jwk.source;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.nimbusds.jose.jwk.source.log.RetryingJWKSetSourceLogger;
 import com.nimbusds.jose.proc.SecurityContext;
 
 import static junit.framework.TestCase.assertEquals;
@@ -34,45 +35,47 @@ import java.util.logging.Level;
 
 public class RetryingJWKSetSourceTest extends AbstractDelegateSourceTest {
 
-	private RetryingJWKSetSource<SecurityContext> provider;
+	private RetryingJWKSetSource<SecurityContext> source;
 
-	private RetryingJWKSetSource.Listener<SecurityContext> listener = new DefaultRetryingJWKSetSourceListener<SecurityContext>(Level.INFO);
+	private RetryingJWKSetSource.Listener<SecurityContext> listener = new RetryingJWKSetSourceLogger<SecurityContext>(Level.INFO);
 	
 	@Before
 	public void setUp() throws Exception {
 		super.setUp();
-		provider = new RetryingJWKSetSource<>(delegate, listener);
+		source = new RetryingJWKSetSource<>(delegate, listener);
 	}
 
 	@Test
 	public void testShouldReturnListOnSuccess() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
-		verify(delegate, times(1)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenReturn(jwkSet);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
+		verify(delegate, times(1)).getJWKSet(eq(false), anyLong(), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldRetryWhenUnavailable() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenThrow(new JWKSetUnavailableException("TEST!", null)).thenReturn(jwks);
-		assertEquals(provider.getJWKSet(System.currentTimeMillis(), false, context), jwks);
-		verify(delegate, times(2)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenThrow(new JWKSetUnavailableException("TEST!", null)).thenReturn(jwkSet);
+		assertEquals(source.getJWKSet(false, System.currentTimeMillis(), context), jwkSet);
+		verify(delegate, times(2)).getJWKSet(eq(false), anyLong(), anySecurityContext());
 	}
 
 	@Test
 	public void testShouldNotRetryMoreThanOnce() throws Exception {
-		when(delegate.getJWKSet(anyLong(), eq(false), anySecurityContext())).thenThrow(new JWKSetUnavailableException("TEST!", null));
+		when(delegate.getJWKSet(eq(false), anyLong(), anySecurityContext())).thenThrow(new JWKSetUnavailableException("TEST!", null));
 
 		try {
-			provider.getJWKSet(System.currentTimeMillis(), false, context);
+			source.getJWKSet(false, System.currentTimeMillis(), context);
 			fail();
 		} catch(JWKSetUnavailableException e) {
-			// pass
+			assertEquals("TEST!", e.getMessage());
 		} finally {
-			verify(delegate, times(2)).getJWKSet(anyLong(), eq(false), anySecurityContext());
+			verify(delegate, times(2)).getJWKSet(eq(false), anyLong(), anySecurityContext());
 		}
 	}
 
-	public void testShouldGetBaseProvider() throws Exception {
-		assertEquals(provider.getSource(), delegate);
+	
+	@Test
+	public void testShouldGetBaseProvider() {
+		assertEquals(source.getSource(), delegate);
 	}
 }
