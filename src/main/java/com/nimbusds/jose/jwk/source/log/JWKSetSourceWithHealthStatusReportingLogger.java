@@ -26,7 +26,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 /**
  * Logs {@link JWKSetSourceWithHealthStatusReporting} events.
  */
-public class JWKSetSourceWithHealthStatusReportingLogger<C extends SecurityContext> extends AbstractJWKSetSourceListener implements JWKSetSourceWithHealthStatusReporting.Listener<C> {
+public class JWKSetSourceWithHealthStatusReportingLogger<C extends SecurityContext> extends AbstractJWKSetSourceLogger implements JWKSetSourceWithHealthStatusReporting.Listener<C> {
 
 	
 	public JWKSetSourceWithHealthStatusReportingLogger(final Level level) {

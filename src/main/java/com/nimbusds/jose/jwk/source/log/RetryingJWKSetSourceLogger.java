@@ -26,7 +26,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 /**
  * Logs {@linkplain RetryingJWKSetSourceLogger} events.
  */
-public class RetryingJWKSetSourceLogger<C extends SecurityContext> extends AbstractJWKSetSourceListener implements Listener<C> {
+public class RetryingJWKSetSourceLogger<C extends SecurityContext> extends AbstractJWKSetSourceLogger implements Listener<C> {
 
 	
 	public RetryingJWKSetSourceLogger(final Level level) {

@@ -20,12 +20,12 @@ package com.nimbusds.jose.jwk.source.log;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public abstract class AbstractJWKSetSourceListener {
+public abstract class AbstractJWKSetSourceLogger {
 
 	protected final Level level;
 	protected final Logger logger;
 
-	public AbstractJWKSetSourceListener(final Level level, final Logger logger) {
+	public AbstractJWKSetSourceLogger(final Level level, final Logger logger) {
 		this.level = level;
 		this.logger = logger;
 	}

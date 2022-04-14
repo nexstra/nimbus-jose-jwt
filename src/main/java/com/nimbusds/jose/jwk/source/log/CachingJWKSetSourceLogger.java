@@ -26,7 +26,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 /**
  * Logs {@linkplain com.nimbusds.jose.jwk.source.CachingJWKSetSource} events.
  */
-public class CachingJWKSetSourceLogger<C extends SecurityContext> extends AbstractJWKSetSourceListener implements Listener<C> {
+public class CachingJWKSetSourceLogger<C extends SecurityContext> extends AbstractJWKSetSourceLogger implements Listener<C> {
 
 	
 	public CachingJWKSetSourceLogger(final Level level) {

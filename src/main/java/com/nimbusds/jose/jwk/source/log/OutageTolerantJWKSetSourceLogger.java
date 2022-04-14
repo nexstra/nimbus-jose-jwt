@@ -27,7 +27,7 @@ import com.nimbusds.jose.proc.SecurityContext;
  * Logs {@linkplain com.nimbusds.jose.jwk.source.OutageTolerantJWKSetSource}
  * events.
  */
-public class OutageTolerantJWKSetSourceLogger<C extends SecurityContext> extends AbstractJWKSetSourceListener implements Listener<C> {
+public class OutageTolerantJWKSetSourceLogger<C extends SecurityContext> extends AbstractJWKSetSourceLogger implements Listener<C> {
 
 	
 	private final Level escalationLevel;
