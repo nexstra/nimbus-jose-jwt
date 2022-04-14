@@ -135,7 +135,7 @@ public class JWKSetBasedJWKSourceTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSetSource<SecurityContext> provider = jwkSetSource.getSource();
+		JWKSetSource<SecurityContext> provider = jwkSetSource.getJWKSetSource();
 		JWKSet out = provider.getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
@@ -173,7 +173,7 @@ public class JWKSetBasedJWKSourceTest {
 
 		assertEquals(1, matches.size());
 
-		JWKSetSource<SecurityContext> provider = jwkSetSource.getSource();
+		JWKSetSource<SecurityContext> provider = jwkSetSource.getJWKSetSource();
 		JWKSet out = provider.getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
@@ -258,7 +258,7 @@ public class JWKSetBasedJWKSourceTest {
 		assertEquals(1, matches.size());
 
 		// Check cache
-		JWKSet out = jwkSetSource.getSource().getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
+		JWKSet out = jwkSetSource.getJWKSetSource().getJWKSet(false, System.currentTimeMillis(), new SimpleSecurityContext());
 		assertTrue(out.getKeys().get(0) instanceof RSAKey);
 		assertTrue(out.getKeys().get(1) instanceof RSAKey);
 		assertEquals("1", out.getKeys().get(0).getKeyID());

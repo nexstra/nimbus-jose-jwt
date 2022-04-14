@@ -126,7 +126,7 @@ public class JWKSourceBuilderTest extends AbstractDelegateSourceTest {
 	private List<JWKSetSource<SecurityContext>> jwksProviders(JWKSource<SecurityContext> jwkSource) {
 		JWKSetBasedJWKSource<SecurityContext> remoteJWKSet = (JWKSetBasedJWKSource<SecurityContext>) jwkSource;
 
-		JWKSetSource<SecurityContext> jwksProvider = remoteJWKSet.getSource();
+		JWKSetSource<SecurityContext> jwksProvider = remoteJWKSet.getJWKSetSource();
 
 		List<JWKSetSource<SecurityContext>> list = new ArrayList<>();
 

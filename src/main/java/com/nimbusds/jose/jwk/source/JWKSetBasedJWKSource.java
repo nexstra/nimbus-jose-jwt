@@ -18,7 +18,6 @@
 package com.nimbusds.jose.jwk.source;
 
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -28,19 +27,19 @@ import net.jcip.annotations.ThreadSafe;
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSelector;
+import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.util.health.HealthReport;
-import com.nimbusds.jose.util.health.HealthStatusReporting;
 
 
 /**
  * JSON Web Key (JWK) set based JWK source.
  *
  * @author Thomas Rørvik Skjølberg
- * @version 2022-04-09
+ * @version 2022-04-14
  */
 @ThreadSafe
-public class JWKSetBasedJWKSource<C extends SecurityContext> implements JWKSource<C>, Closeable, HealthStatusReporting<C> {
+public class JWKSetBasedJWKSource<C extends SecurityContext> implements JWKSetSource<C>, JWKSource<C> {
 
 	
 	private final JWKSetSource<C> source;
@@ -80,12 +79,18 @@ public class JWKSetBasedJWKSource<C extends SecurityContext> implements JWKSourc
 	}
 	
 	
+	@Override
+	public JWKSet getJWKSet(final boolean forceReload, final long currentTime, final C context) throws KeySourceException {
+		return source.getJWKSet(forceReload, currentTime, context);
+	}
+	
+	
 	/**
 	 * Returns the underlying JWK set source.
 	 *
 	 * @return The JWK set source.
 	 */
-	public JWKSetSource<C> getSource() {
+	public JWKSetSource<C> getJWKSetSource() {
 		return source;
 	}
 	
