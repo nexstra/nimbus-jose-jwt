@@ -58,7 +58,7 @@ import com.nimbusds.jose.util.Base64URL;
  * 
  * @author Axel Nennker
  * @author Vladimir Dzhuvinov
- * @version 2017-04-13
+ * @version 2022-04-21
  */
 @ThreadSafe
 public class ECDSAVerifier extends ECDSAProvider implements JWSVerifier, CriticalHeaderParamsAware {
@@ -176,15 +176,14 @@ public class ECDSAVerifier extends ECDSAProvider implements JWSVerifier, Critica
 		}
 
 		final byte[] jwsSignature = signature.decode();
-
-		final byte[] derSignature;
 		
 		if (ECDSA.getSignatureByteArrayLength(header.getAlgorithm()) != jwsSignature.length) {
 			// Quick format check, concatenation of R+S (may be padded
 			// to match lengths) in ESxxx signatures has fixed length
 			return false;
 		}
-
+		
+		final byte[] derSignature;
 		try {
 			derSignature = ECDSA.transcodeSignatureToDER(jwsSignature);
 		} catch (JOSEException e) {
