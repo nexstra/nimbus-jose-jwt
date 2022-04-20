@@ -22,17 +22,19 @@ import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
+import junit.framework.TestCase;
+
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.impl.ECDSA;
 import com.nimbusds.jose.jwk.Curve;
-import junit.framework.TestCase;
+import com.nimbusds.jose.util.StandardCharset;
 
 
 /**
  * Tests the static ECDSA utilities.
  *
- * @version 2018-03-28
+ * @version 2022-04-20
  */
 public class ECDSATest extends TestCase {
 
@@ -102,7 +104,7 @@ public class ECDSATest extends TestCase {
 	}
 	
 	
-	public void test_default_JCE_for_CVE_2022_21449() throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+	public void test_default_JCE_for_CVE_2022_21449() throws NoSuchAlgorithmException, SignatureException, InvalidKeyException, JOSEException {
 		
 		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
 		
@@ -114,5 +116,37 @@ public class ECDSATest extends TestCase {
 		signature.update("Hello, World".getBytes());
 		boolean verify = signature.verify(blankSignature);
 		assertFalse("Blank signature must not be valid", verify);
+	}
+	
+	
+	public void testTranscoding_concat_to_DER() throws Exception {
+		
+		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
+		Signature signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
+		signature.initSign(keyPair.getPrivate());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		byte[] signatureBytesConcat = signature.sign();
+		
+		byte[] signatureBytesDER = ECDSA.transcodeSignatureToDER(signatureBytesConcat);
+		signature = Signature.getInstance("SHA256WithECDSA");
+		signature.initVerify(keyPair.getPublic());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		assertTrue(signature.verify(signatureBytesDER));
+	}
+	
+	
+	public void testTranscoding_DER_to_concat() throws Exception {
+		
+		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
+		Signature signature = Signature.getInstance("SHA256WithECDSA");
+		signature.initSign(keyPair.getPrivate());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		byte[] signatureBytesDER = signature.sign();
+		
+		byte[] signatureBytesConcat = ECDSA.transcodeSignatureToConcat(signatureBytesDER, 64);
+		signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
+		signature.initVerify(keyPair.getPublic());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		assertTrue(signature.verify(signatureBytesConcat));
 	}
 }
