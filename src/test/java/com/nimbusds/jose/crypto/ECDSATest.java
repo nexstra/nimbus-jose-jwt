@@ -18,7 +18,7 @@
 package com.nimbusds.jose.crypto;
 
 
-import java.security.KeyPair;
+import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
@@ -99,5 +99,20 @@ public class ECDSATest extends TestCase {
 
 		assertEquals(JWSAlgorithm.ES512, ECDSA.resolveAlgorithm(publicKey));
 		assertEquals(JWSAlgorithm.ES512, ECDSA.resolveAlgorithm(privateKey));
+	}
+	
+	
+	public void test_default_JCE_for_CVE_2022_21449() throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+		
+		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
+		
+		byte[] blankSignature = new byte[64];
+		
+		Signature signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
+		
+		signature.initVerify(keyPair.getPublic());
+		signature.update("Hello, World".getBytes());
+		boolean verify = signature.verify(blankSignature);
+		assertFalse("Blank signature must not be valid", verify);
 	}
 }
