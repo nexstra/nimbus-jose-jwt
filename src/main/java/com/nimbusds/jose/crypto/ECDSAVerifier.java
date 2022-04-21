@@ -183,6 +183,12 @@ public class ECDSAVerifier extends ECDSAProvider implements JWSVerifier, Critica
 			return false;
 		}
 		
+		if (ECDSA.concatSignatureAllZeroes(jwsSignature)) {
+			// Prevent CVE-2022-21449 attacks
+			// (ECDSA.transcodeSignatureToDER is the second line of defence)
+			return false;
+		}
+		
 		final byte[] derSignature;
 		try {
 			derSignature = ECDSA.transcodeSignatureToDER(jwsSignature);

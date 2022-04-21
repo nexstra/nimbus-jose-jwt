@@ -18,22 +18,28 @@
 package com.nimbusds.jose.crypto;
 
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Signature;
 import java.text.ParseException;
+import java.util.Arrays;
 
 import junit.framework.TestCase;
 import org.junit.Assert;
 
 import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.impl.ECDSA;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.ByteUtils;
+import com.nimbusds.jose.util.StandardCharset;
 
 
 /**
  * @author Vladimir Dzhuvinov
- * @version 2021-01-28
+ * @version 2022-04-21
  */
 public class ECDSATranscodingTest extends TestCase {
 	
@@ -111,5 +117,75 @@ public class ECDSATranscodingTest extends TestCase {
 		// Appending an extra char at the longer BASE64URL text for ES384
 		// (and ES512) doesn't actually change the underlying signature bytes :)
 		Assert.assertArrayEquals(es384.getSignature().decode(), es384mod.getSignature().decode());
+	}
+	
+	
+	public void testTranscoding_concat_to_DER() throws Exception {
+		
+		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
+		Signature signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
+		signature.initSign(keyPair.getPrivate());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		byte[] signatureBytesConcat = signature.sign();
+		
+		byte[] signatureBytesDER = ECDSA.transcodeSignatureToDER(signatureBytesConcat);
+		signature = Signature.getInstance("SHA256WithECDSA");
+		signature.initVerify(keyPair.getPublic());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		assertTrue(signature.verify(signatureBytesDER));
+	}
+	
+	
+	public void testTranscoding_DER_to_concat() throws Exception {
+		
+		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
+		Signature signature = Signature.getInstance("SHA256WithECDSA");
+		signature.initSign(keyPair.getPrivate());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		byte[] signatureBytesDER = signature.sign();
+		
+		byte[] signatureBytesConcat = ECDSA.transcodeSignatureToConcat(signatureBytesDER, 64);
+		signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
+		signature.initVerify(keyPair.getPublic());
+		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
+		assertTrue(signature.verify(signatureBytesConcat));
+	}
+	
+	
+	// iss 473
+	public void testTranscoding_toDER_blank() {
+		
+		try {
+			ECDSA.transcodeSignatureToDER(new byte[64]);
+		} catch (JOSEException e) {
+			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
+			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
+		}
+	}
+	
+	
+	public void testTranscoding_toDER_rBlank_sOnes() throws JOSEException {
+		
+		byte[] rBytes = new byte[32];
+		byte[] sBytes = new byte[32];
+		Arrays.fill(sBytes, Byte.MAX_VALUE);
+		
+		ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
+	}
+	
+	
+	// iss 473
+	public void testTranscoding_toDER_rOnes_sZeros() {
+		
+		byte[] rBytes = new byte[32];
+		Arrays.fill(rBytes, Byte.MAX_VALUE);
+		byte[] sBytes = new byte[32];
+		
+		try {
+			ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
+		} catch (JOSEException e) {
+			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
+			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
+		}
 	}
 }

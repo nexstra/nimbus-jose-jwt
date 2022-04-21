@@ -1425,4 +1425,6 @@ version 9.21 (2022-03-07)
 version 9.21.1 (2022-04-21)
     * ECDSA.transcodeSignatureToDER must not throw unchecked exceptions (iss
       #473).
-
+    * Adds line of defence against CVE-2022-21449 attacks on vulnerable JREs in
+      addition to the existing defence in ECDSA.transcodeSignatureToDER (iss
+      #474).

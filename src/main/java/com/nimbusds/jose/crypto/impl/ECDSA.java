@@ -320,6 +320,26 @@ public class ECDSA {
 			throw new JOSEException(e.getMessage(), e);
 		}
 	}
+	
+	
+	/**
+	 * Returns {@code true} if the JWS signature R and S values are all
+	 * zeroes.
+	 *
+	 * @param jwsSignature The JWS signature bytes. Must not be
+	 *                     {@code null}.
+	 *
+	 * @return {@code true} if all bytes are zeroes, else {@code false}.
+	 */
+	public static boolean concatSignatureAllZeroes(final byte[] jwsSignature) {
+		
+		for (final byte b : jwsSignature) {
+			if (b != 0) {
+				return false;
+			}
+		}
+		return true;
+	}
 
 
 	/**

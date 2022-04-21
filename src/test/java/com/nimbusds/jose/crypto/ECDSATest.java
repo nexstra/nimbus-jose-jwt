@@ -18,17 +18,21 @@
 package com.nimbusds.jose.crypto;
 
 
-import java.security.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Signature;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.text.ParseException;
 import java.util.Arrays;
 
 import junit.framework.TestCase;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.impl.ECDSA;
 import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.ByteUtils;
 import com.nimbusds.jose.util.StandardCharset;
 
@@ -106,7 +110,7 @@ public class ECDSATest extends TestCase {
 	}
 	
 	
-	public void test_default_JCE_for_CVE_2022_21449() throws NoSuchAlgorithmException, SignatureException, InvalidKeyException, JOSEException {
+	public void test_default_JCE_for_CVE_2022_21449() throws Exception {
 		
 		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
 		
@@ -117,74 +121,32 @@ public class ECDSATest extends TestCase {
 		signature.initVerify(keyPair.getPublic());
 		signature.update("Hello, World".getBytes());
 		boolean verify = signature.verify(blankSignature);
-		assertFalse("Blank signature must not be valid", verify);
+		assertFalse("Blank signature must not be valid - upgrade your JRE with patched version for CVE-2022-21449", verify);
 	}
 	
 	
-	public void testTranscoding_concat_to_DER() throws Exception {
+	public void testES256_for_CVE_2022_21449() throws ParseException, JOSEException {
 		
-		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
-		Signature signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
-		signature.initSign(keyPair.getPrivate());
-		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
-		byte[] signatureBytesConcat = signature.sign();
+		JWSObject jwsObject = new JWSObject(new JWSHeader(JWSAlgorithm.ES256), new Payload("Hello, world"));
 		
-		byte[] signatureBytesDER = ECDSA.transcodeSignatureToDER(signatureBytesConcat);
-		signature = Signature.getInstance("SHA256WithECDSA");
-		signature.initVerify(keyPair.getPublic());
-		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
-		assertTrue(signature.verify(signatureBytesDER));
+		String jwsString = new String(jwsObject.getSigningInput(), StandardCharset.UTF_8) +
+			"." +
+			Base64URL.encode(new byte[64]);
+		
+		assertFalse(JWSObject.parse(jwsString).verify(new ECDSAVerifier(new ECKeyGenerator(Curve.P_256).generate().toPublicJWK())));
 	}
 	
 	
-	public void testTranscoding_DER_to_concat() throws Exception {
+	public void testConcatSignatureAllZeroes() {
 		
-		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
-		Signature signature = Signature.getInstance("SHA256WithECDSA");
-		signature.initSign(keyPair.getPrivate());
-		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
-		byte[] signatureBytesDER = signature.sign();
+		assertTrue(ECDSA.concatSignatureAllZeroes(new byte[64]));
 		
-		byte[] signatureBytesConcat = ECDSA.transcodeSignatureToConcat(signatureBytesDER, 64);
-		signature = Signature.getInstance("SHA256WithECDSAInP1363Format");
-		signature.initVerify(keyPair.getPublic());
-		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
-		assertTrue(signature.verify(signatureBytesConcat));
-	}
-	
-	
-	public void testTranscoding_toDER_blank() {
+		byte[] array = new byte[64];
+		Arrays.fill(array, Byte.MAX_VALUE);
+		assertFalse(ECDSA.concatSignatureAllZeroes(array));
 		
-		try {
-			ECDSA.transcodeSignatureToDER(new byte[64]);
-		} catch (JOSEException e) {
-			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
-			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
-		}
-	}
-	
-	
-	public void testTranscoding_toDER_rBlank_sOnes() throws JOSEException {
-		
-		byte[] rBytes = new byte[32];
-		byte[] sBytes = new byte[32];
-		Arrays.fill(sBytes, Byte.MAX_VALUE);
-		
-		ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
-	}
-	
-	
-	public void testTranscoding_toDER_rOnes_sZeros() {
-		
-		byte[] rBytes = new byte[32];
-		Arrays.fill(rBytes, Byte.MAX_VALUE);
-		byte[] sBytes = new byte[32];
-		
-		try {
-			ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
-		} catch (JOSEException e) {
-			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
-			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
-		}
+		array = new byte[64];
+		array[63] = 1;
+		assertFalse(ECDSA.concatSignatureAllZeroes(array));
 	}
 }
