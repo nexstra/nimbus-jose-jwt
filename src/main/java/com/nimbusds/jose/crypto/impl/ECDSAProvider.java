@@ -19,7 +19,6 @@ package com.nimbusds.jose.crypto.impl;
 
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -43,7 +42,7 @@ import com.nimbusds.jose.JWSAlgorithm;
  * 
  * @author Axel Nennker
  * @author Vladimir Dzhuvinov
- * @version 2017-05-13
+ * @version 2022-04-21
  */
 public abstract class ECDSAProvider extends BaseJWSProvider {
 
@@ -76,7 +75,7 @@ public abstract class ECDSAProvider extends BaseJWSProvider {
 	protected ECDSAProvider(final JWSAlgorithm alg)
 		throws JOSEException {
 
-		super(new HashSet<>(Collections.singletonList(alg)));
+		super(Collections.singleton(alg));
 
 		if (! SUPPORTED_ALGORITHMS.contains(alg)) {
 			throw new JOSEException("Unsupported EC DSA algorithm: " + alg);
