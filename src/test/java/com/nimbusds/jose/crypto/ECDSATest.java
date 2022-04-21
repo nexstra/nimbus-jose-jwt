@@ -21,6 +21,7 @@ package com.nimbusds.jose.crypto;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.util.Arrays;
 
 import junit.framework.TestCase;
 
@@ -28,13 +29,14 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.impl.ECDSA;
 import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.util.ByteUtils;
 import com.nimbusds.jose.util.StandardCharset;
 
 
 /**
  * Tests the static ECDSA utilities.
  *
- * @version 2022-04-20
+ * @version 2022-04-21
  */
 public class ECDSATest extends TestCase {
 
@@ -148,5 +150,41 @@ public class ECDSATest extends TestCase {
 		signature.initVerify(keyPair.getPublic());
 		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
 		assertTrue(signature.verify(signatureBytesConcat));
+	}
+	
+	
+	public void testTranscoding_toDER_blank() {
+		
+		try {
+			ECDSA.transcodeSignatureToDER(new byte[64]);
+		} catch (JOSEException e) {
+			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
+			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
+		}
+	}
+	
+	
+	public void testTranscoding_toDER_rBlank_sOnes() throws JOSEException {
+		
+		byte[] rBytes = new byte[32];
+		byte[] sBytes = new byte[32];
+		Arrays.fill(sBytes, Byte.MAX_VALUE);
+		
+		ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
+	}
+	
+	
+	public void testTranscoding_toDER_rOnes_sZeros() {
+		
+		byte[] rBytes = new byte[32];
+		Arrays.fill(rBytes, Byte.MAX_VALUE);
+		byte[] sBytes = new byte[32];
+		
+		try {
+			ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
+		} catch (JOSEException e) {
+			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
+			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
+		}
 	}
 }

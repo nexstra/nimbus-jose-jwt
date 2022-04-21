@@ -34,7 +34,7 @@ import com.nimbusds.jose.jwk.Curve;
  *
  * @author Vladimir Dzhuvinov
  * @author Aleksei Doroganov
- * @version 2020-12-27
+ * @version 2022-04-21
  */
 public class ECDSA {
 
@@ -241,73 +241,84 @@ public class ECDSA {
 	 *
 	 * @return The ASN.1/DER encoded signature.
 	 *
-	 * @throws JOSEException If the ECDSA JWS signature format is invalid.
+	 * @throws JOSEException If the ECDSA JWS signature format is invalid
+	 *                       or conversion failed unexpectedly.
 	 */
 	public static byte[] transcodeSignatureToDER(final byte[] jwsSignature)
 		throws JOSEException {
 
 		// Adapted from org.apache.xml.security.algorithms.implementations.SignatureECDSA
-
-		int rawLen = jwsSignature.length / 2;
-
-		int i;
-
-		for (i = rawLen; (i > 0) && (jwsSignature[rawLen - i] == 0); i--) {
-			// do nothing
+		try {
+			int rawLen = jwsSignature.length / 2;
+			
+			int i;
+			
+			for (i = rawLen; (i > 0) && (jwsSignature[rawLen - i] == 0); i--) {
+				// do nothing
+			}
+			
+			int j = i;
+			
+			if (jwsSignature[rawLen - i] < 0) {
+				j += 1;
+			}
+			
+			int k;
+			
+			for (k = rawLen; (k > 0) && (jwsSignature[2 * rawLen - k] == 0); k--) {
+				// do nothing
+			}
+			
+			int l = k;
+			
+			if (jwsSignature[2 * rawLen - k] < 0) {
+				l += 1;
+			}
+			
+			int len = 2 + j + 2 + l;
+			
+			if (len > 255) {
+				throw new JOSEException("Invalid ECDSA signature format");
+			}
+			
+			int offset;
+			
+			final byte[] derSignature;
+			
+			if (len < 128) {
+				derSignature = new byte[2 + 2 + j + 2 + l];
+				offset = 1;
+			} else {
+				derSignature = new byte[3 + 2 + j + 2 + l];
+				derSignature[1] = (byte) 0x81;
+				offset = 2;
+			}
+			
+			derSignature[0] = 48;
+			derSignature[offset++] = (byte) len;
+			derSignature[offset++] = 2;
+			derSignature[offset++] = (byte) j;
+			
+			System.arraycopy(jwsSignature, rawLen - i, derSignature, (offset + j) - i, i);
+			
+			offset += j;
+			
+			derSignature[offset++] = 2;
+			derSignature[offset++] = (byte) l;
+			
+			System.arraycopy(jwsSignature, 2 * rawLen - k, derSignature, (offset + l) - k, k);
+			
+			return derSignature;
+			
+		} catch (Exception e) {
+			// Watch for unchecked exceptions
+			
+			if (e instanceof JOSEException) {
+				throw e;
+			}
+			
+			throw new JOSEException(e.getMessage(), e);
 		}
-
-		int j = i;
-
-		if (jwsSignature[rawLen - i] < 0) {
-			j += 1;
-		}
-
-		int k;
-
-		for (k = rawLen; (k > 0) && (jwsSignature[2 * rawLen - k] == 0); k--) {
-			// do nothing
-		}
-
-		int l = k;
-
-		if (jwsSignature[2 * rawLen - k] < 0) {
-			l += 1;
-		}
-
-		int len = 2 + j + 2 + l;
-
-		if (len > 255) {
-			throw new JOSEException("Invalid ECDSA signature format");
-		}
-
-		int offset;
-
-		final byte[] derSignature;
-
-		if (len < 128) {
-			derSignature = new byte[2 + 2 + j + 2 + l];
-			offset = 1;
-		} else {
-			derSignature = new byte[3 + 2 + j + 2 + l];
-			derSignature[1] = (byte) 0x81;
-			offset = 2;
-		}
-
-		derSignature[0] = 48;
-		derSignature[offset++] = (byte) len;
-		derSignature[offset++] = 2;
-		derSignature[offset++] = (byte) j;
-
-		System.arraycopy(jwsSignature, rawLen - i, derSignature, (offset + j) - i, i);
-
-		offset += j;
-
-		derSignature[offset++] = 2;
-		derSignature[offset++] = (byte) l;
-
-		System.arraycopy(jwsSignature, 2 * rawLen - k, derSignature, (offset + l) - k, k);
-
-		return derSignature;
 	}
 
 
