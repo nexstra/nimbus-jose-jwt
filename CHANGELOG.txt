@@ -1428,3 +1428,4 @@ version 9.21.1 (2022-04-21)
     * Adds line of defence against CVE-2022-21449 attacks on vulnerable JREs in
       addition to the existing defence in ECDSA.transcodeSignatureToDER (iss
       #474).
+    * Bumps JSON Smart to 2.4.8.
