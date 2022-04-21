@@ -32,6 +32,7 @@ import com.nimbusds.jose.crypto.impl.ECDSA;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.ByteUtils;
 import com.nimbusds.jose.util.StandardCharset;
@@ -149,6 +150,25 @@ public class ECDSATranscodingTest extends TestCase {
 		signature.initVerify(keyPair.getPublic());
 		signature.update("Hello, world!".getBytes(StandardCharset.UTF_8));
 		assertTrue(signature.verify(signatureBytesConcat));
+	}
+	
+	
+	public void testTranscoding_DER_to_concat_blank() throws JOSEException {
+		
+		byte[] derZeroZero = new Base64("MAYCAQACAQA=").decode();
+		
+		byte[] concat = ECDSA.transcodeSignatureToConcat(derZeroZero, 64);
+		
+		assertEquals(64, concat.length);
+		
+		assertTrue(ECDSA.concatSignatureAllZeroes(concat));
+		
+		try {
+			ECDSA.transcodeSignatureToDER(concat);
+			fail("DER to contact encoding of of S=0 R=0 must fail");
+		} catch (JOSEException e) {
+			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
+		}
 	}
 	
 	
