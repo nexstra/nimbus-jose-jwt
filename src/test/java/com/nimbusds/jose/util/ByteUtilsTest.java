@@ -18,14 +18,12 @@
 package com.nimbusds.jose.util;
 
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
 
 import junit.framework.TestCase;
-
-import com.nimbusds.jose.JOSEException;
 
 
 /**
@@ -71,8 +69,7 @@ public class ByteUtilsTest extends TestCase {
 	}
 	
 	
-	public void testSafeBitLength_OK()
-		throws JOSEException {
+	public void testSafeBitLength_OK() {
 		
 		assertEquals(8, ByteUtils.bitLength(1));
 		assertEquals(16, ByteUtils.bitLength(2));
@@ -92,8 +89,7 @@ public class ByteUtilsTest extends TestCase {
 	}
 	
 	
-	public void testArraySafeBitLength_OK()
-		throws JOSEException {
+	public void testArraySafeBitLength_OK() {
 		
 		assertEquals( 8, ByteUtils.bitLength(new byte[1]));
 		assertEquals(16, ByteUtils.bitLength(new byte[2]));
@@ -111,6 +107,27 @@ public class ByteUtilsTest extends TestCase {
 			System.out.println("Test not run due to " + e);
 		} catch (IntegerOverflowException e) {
 			assertEquals("Integer overflow", e.getMessage());
+		}
+	}
+	
+	
+	public void testConcatSignatureAllZeroes() {
+		
+		assertTrue(ByteUtils.isZeroFilled(new byte[64]));
+		
+		byte[] array = new byte[64];
+		Arrays.fill(array, Byte.MAX_VALUE);
+		assertFalse(ByteUtils.isZeroFilled(array));
+		
+		array = new byte[64];
+		array[63] = 1;
+		assertFalse(ByteUtils.isZeroFilled(array));
+		
+		try {
+			ByteUtils.isZeroFilled(null);
+			fail();
+		} catch (NullPointerException e) {
+			// ok
 		}
 	}
 }

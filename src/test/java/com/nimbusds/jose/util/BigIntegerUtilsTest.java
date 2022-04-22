@@ -20,7 +20,6 @@ package com.nimbusds.jose.util;
 
 import java.math.BigInteger;
 
-import com.nimbusds.jose.util.BigIntegerUtils;
 import junit.framework.TestCase;
 
 
@@ -28,6 +27,7 @@ import junit.framework.TestCase;
  * Tests the big integer utility.
  *
  * @author Vladimir Dzhuvinov
+ * @version 2022-04-22
  */
 public class BigIntegerUtilsTest extends TestCase {
 
@@ -48,5 +48,47 @@ public class BigIntegerUtilsTest extends TestCase {
 		byte[] a2 = BigIntegerUtils.toBytesUnsigned(new BigInteger("F23456789A", 16));
 
 		assertEquals(a1.length, a2.length);
+	}
+	
+	
+	public void testBigIntegerConstructor_byteArray() {
+		
+		final BigInteger bigInteger = new BigInteger("123456789");
+		
+		byte[] bytes = bigInteger.toByteArray();
+		assertEquals(bigInteger, new BigInteger(1, bytes));
+		
+		bytes = BigIntegerUtils.toBytesUnsigned(bigInteger);
+		assertEquals(bigInteger, new BigInteger(1, bytes));
+	}
+	
+	
+	public void testBigIntegerConstructor_byteArray_leadingZeroPadded() {
+		
+		final BigInteger bigInteger = new BigInteger("123456789");
+		
+		byte[] bytes = bigInteger.toByteArray();
+		byte[] bytesZeroPadded = ByteUtils.concat(new byte[1], bytes);
+		assertEquals(bigInteger, new BigInteger(1, bytesZeroPadded));
+		
+		bytes = BigIntegerUtils.toBytesUnsigned(bigInteger);
+		bytesZeroPadded = ByteUtils.concat(new byte[1], bytes);
+		assertEquals(bigInteger, new BigInteger(1, bytesZeroPadded));
+	}
+	
+	
+	public void testBigIntegerConstructor_byteArray_leadingZeroPaddedMultiple() {
+		
+		final BigInteger bigInteger = new BigInteger("123456789");
+		
+		final int numZeroBytes = 10;
+		
+		byte[] bytes = bigInteger.toByteArray();
+		byte[] bytesZeroPadded = ByteUtils.concat(new byte[numZeroBytes], bytes);
+		assertEquals(bigInteger, new BigInteger(1, bytesZeroPadded));
+		
+		bytes = BigIntegerUtils.toBytesUnsigned(bigInteger);
+		bytesZeroPadded = ByteUtils.concat(new byte[numZeroBytes], bytes);
+		assertEquals(bigInteger, new BigInteger(1, bytesZeroPadded));
 	}
 }

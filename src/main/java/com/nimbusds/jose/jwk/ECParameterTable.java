@@ -19,7 +19,10 @@ package com.nimbusds.jose.jwk;
 
 
 import java.math.BigInteger;
-import java.security.spec.*;
+import java.security.spec.ECFieldFp;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
+import java.security.spec.EllipticCurve;
 
 
 /**
@@ -36,9 +39,9 @@ import java.security.spec.*;
  *
  * @author Vladimir Dzhuvinov
  * @author Aleksei Doroganov
- * @version 2018-03-28
+ * @version 2022-04-22
  */
-class ECParameterTable {
+public class ECParameterTable {
 
 
 	/**
@@ -67,36 +70,6 @@ class ECParameterTable {
 	 * {@link com.nimbusds.jose.jwk.Curve#P_521} curve.
 	 */
 	private static final ECParameterSpec P_521_SPEC;
-
-
-	/**
-	 * Simple EC field implementation.
-	 */
-	private static class ECFieldImpl implements ECField {
-
-
-		/**
-		 * The field size.
-		 */
-		private final int size;
-
-
-		/**
-		 * Creates a new EC field with the specified size.
-		 *
-		 * @param size The EC field size.
-		 */
-		public ECFieldImpl(final int size) {
-
-			this.size = size;
-		}
-
-
-		@Override
-		public int getFieldSize() {
-			return size;
-		}
-	}
 
 
 	static {

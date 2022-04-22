@@ -1429,3 +1429,9 @@ version 9.21.1 (2022-04-21)
       addition to the existing defence in ECDSA.transcodeSignatureToDER (iss
       #474).
     * Bumps JSON Smart to 2.4.8.
+
+version 9.22 (2022-04-22)
+    * Adds ECDSA R and S signature value checking to prevent exploitation of
+      Java runtimes and JCE providers vulnerable to CVE-2022-21449 (iss #472).
+    * Makes ECParameterTable public.
+    * Adds ByteUtils.isZeroFilled static method.

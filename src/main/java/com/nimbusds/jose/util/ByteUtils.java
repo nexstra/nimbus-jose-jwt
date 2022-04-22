@@ -26,7 +26,7 @@ import java.io.IOException;
  * Byte utilities.
  *
  * @author Vladimir Dzhuvinov
- * @version 2017-06-01
+ * @version 2022-04-22
  */
 public class ByteUtils {
 
@@ -162,5 +162,23 @@ public class ByteUtils {
 	public static int byteLength(final int bitLength) {
 
 		return bitLength / 8;
+	}
+	
+	
+	/**
+	 * Returns {@code true} if the specified byte array is zero filled.
+	 *
+	 * @param byteArray the byte array. Must not be {@code null}.
+	 *
+	 * @return {@code true} if zero filled, else {@code false}.
+	 */
+	public static boolean isZeroFilled(final byte[] byteArray) {
+		
+		for (final byte b : byteArray) {
+			if (b != 0) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

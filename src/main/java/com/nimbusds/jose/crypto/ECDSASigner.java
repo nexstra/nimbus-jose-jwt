@@ -24,6 +24,8 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.interfaces.ECPrivateKey;
 
+import net.jcip.annotations.ThreadSafe;
+
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -34,13 +36,12 @@ import com.nimbusds.jose.crypto.impl.ECDSAProvider;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.util.Base64URL;
-import net.jcip.annotations.ThreadSafe;
 
 
 /**
  * Elliptic Curve Digital Signature Algorithm (ECDSA) signer of 
  * {@link com.nimbusds.jose.JWSObject JWS objects}. Expects a private EC key
- * (with a P-256, P-384 or P-521 curve).
+ * (with a P-256, P-384, P-521 or secp256k1 curve).
  *
  * <p>See RFC 7518
  * <a href="https://tools.ietf.org/html/rfc7518#section-3.4">section 3.4</a>
@@ -52,6 +53,7 @@ import net.jcip.annotations.ThreadSafe;
  *
  * <ul>
  *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES256}
+ *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES256K}
  *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES384}
  *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES512}
  * </ul>
@@ -167,9 +169,7 @@ public class ECDSASigner extends ECDSAProvider implements JWSSigner {
 		}
 
 		// DER-encoded signature, according to JCA spec
-		// (sequence of two integers - R + S)
 		final byte[] jcaSignature;
-
 		try {
 			Signature dsa = ECDSA.getSignerAndVerifier(alg, getJCAContext().getProvider());
 			dsa.initSign(privateKey, getJCAContext().getSecureRandom());

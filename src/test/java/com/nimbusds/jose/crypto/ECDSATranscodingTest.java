@@ -161,7 +161,7 @@ public class ECDSATranscodingTest extends TestCase {
 		
 		assertEquals(64, concat.length);
 		
-		assertTrue(ECDSA.concatSignatureAllZeroes(concat));
+		assertTrue(ByteUtils.isZeroFilled(concat));
 		
 		try {
 			ECDSA.transcodeSignatureToDER(concat);

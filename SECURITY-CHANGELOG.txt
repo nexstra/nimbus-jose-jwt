@@ -66,3 +66,7 @@ version 9.10 (2021-06-05)
 version 9.21 (2022-03-07)
     * Prevent construction and parsing of JWS and JWE headers with non-public
       key in "jwk" parameter (iss #467).
+
+version 9.22 (2022-04-22)
+    * Adds ECDSA R and S signature value checking to prevent exploitation of
+      Java runtimes and JCE providers vulnerable to CVE-2022-21449 (iss #472).

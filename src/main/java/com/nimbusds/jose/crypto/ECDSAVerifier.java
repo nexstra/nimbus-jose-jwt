@@ -40,7 +40,7 @@ import com.nimbusds.jose.util.Base64URL;
 /**
  * Elliptic Curve Digital Signature Algorithm (ECDSA) verifier of 
  * {@link com.nimbusds.jose.JWSObject JWS objects}. Expects a public EC key
- * (with a P-256, P-384 or P-521 curve).
+ * (with a P-256, P-384,  P-521 or secp256k1 curve).
  *
  * <p>See RFC 7518
  * <a href="https://tools.ietf.org/html/rfc7518#section-3.4">section 3.4</a>
@@ -52,13 +52,14 @@ import com.nimbusds.jose.util.Base64URL;
  *
  * <ul>
  *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES256}
+ *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES256K}
  *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES384}
  *     <li>{@link com.nimbusds.jose.JWSAlgorithm#ES512}
  * </ul>
  * 
  * @author Axel Nennker
  * @author Vladimir Dzhuvinov
- * @version 2022-04-21
+ * @version 2022-04-22
  */
 @ThreadSafe
 public class ECDSAVerifier extends ECDSAProvider implements JWSVerifier, CriticalHeaderParamsAware {
@@ -177,15 +178,10 @@ public class ECDSAVerifier extends ECDSAProvider implements JWSVerifier, Critica
 
 		final byte[] jwsSignature = signature.decode();
 		
-		if (ECDSA.getSignatureByteArrayLength(header.getAlgorithm()) != jwsSignature.length) {
-			// Quick format check, concatenation of R+S (may be padded
-			// to match lengths) in ESxxx signatures has fixed length
-			return false;
-		}
-		
-		if (ECDSA.concatSignatureAllZeroes(jwsSignature)) {
-			// Prevent CVE-2022-21449 attacks
-			// (ECDSA.transcodeSignatureToDER is the second line of defence)
+		// Prevent CVE-2022-21449 and similar attacks
+		try {
+			ECDSA.ensureLegalSignature(jwsSignature, alg);
+		} catch (JOSEException e) {
 			return false;
 		}
 		

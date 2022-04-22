@@ -18,6 +18,7 @@
 package com.nimbusds.jose.crypto;
 
 
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
@@ -25,14 +26,19 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import junit.framework.TestCase;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.impl.ECDSA;
 import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.ECParameterTable;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.util.Base64URL;
+import com.nimbusds.jose.util.BigIntegerUtils;
 import com.nimbusds.jose.util.ByteUtils;
 import com.nimbusds.jose.util.StandardCharset;
 
@@ -40,7 +46,7 @@ import com.nimbusds.jose.util.StandardCharset;
 /**
  * Tests the static ECDSA utilities.
  *
- * @version 2022-04-21
+ * @version 2022-04-22
  */
 public class ECDSATest extends TestCase {
 
@@ -110,7 +116,7 @@ public class ECDSATest extends TestCase {
 	}
 	
 	
-	public void test_default_JCE_for_CVE_2022_21449() throws Exception {
+	public void test_default_JCE_for_CVE_2022_21449__zeroSignature() throws Exception {
 		
 		KeyPair keyPair = KeyPairGenerator.getInstance("EC").generateKeyPair();
 		
@@ -121,32 +127,210 @@ public class ECDSATest extends TestCase {
 		signature.initVerify(keyPair.getPublic());
 		signature.update("Hello, World".getBytes());
 		boolean verify = signature.verify(blankSignature);
-		assertFalse("Blank signature must not be valid - upgrade your JRE with patched version for CVE-2022-21449", verify);
+		assertFalse("Your Java runtime is vulnerable to CVE-2022-21449 - Upgrade to a patched Java version!!!", verify);
 	}
 	
 	
-	public void testES256_for_CVE_2022_21449() throws ParseException, JOSEException {
+	public void test_CVE_2022_21449__zeroSignature() throws ParseException, JOSEException {
 		
-		JWSObject jwsObject = new JWSObject(new JWSHeader(JWSAlgorithm.ES256), new Payload("Hello, world"));
-		
-		String jwsString = new String(jwsObject.getSigningInput(), StandardCharset.UTF_8) +
-			"." +
-			Base64URL.encode(new byte[64]);
-		
-		assertFalse(JWSObject.parse(jwsString).verify(new ECDSAVerifier(new ECKeyGenerator(Curve.P_256).generate().toPublicJWK())));
+		for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+			
+			JWSObject jwsObject = new JWSObject(new JWSHeader(jwsAlg), new Payload("Hello, world"));
+			
+			String jwsString = new String(jwsObject.getSigningInput(), StandardCharset.UTF_8) +
+				"." +
+				Base64URL.encode(new byte[ECDSA.getSignatureByteArrayLength(jwsAlg)]);
+			
+			Curve curve = Curve.forJWSAlgorithm(jwsAlg).iterator().next();
+			
+			assertFalse(JWSObject.parse(jwsString).verify(new ECDSAVerifier(new ECKeyGenerator(curve).generate().toPublicJWK())));
+		}
 	}
 	
 	
-	public void testConcatSignatureAllZeroes() {
+	public void test_CVE_2022_21449__r_and_s_equal_N() throws ParseException, JOSEException {
 		
-		assertTrue(ECDSA.concatSignatureAllZeroes(new byte[64]));
+		for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+			
+			JWSObject jwsObject = new JWSObject(new JWSHeader(jwsAlg), new Payload("Hello, world"));
+			
+			Curve curve = Curve.forJWSAlgorithm(jwsAlg).iterator().next();
+			
+			BigInteger n = ECParameterTable.get(curve).getOrder();
+			byte[] nBytes = BigIntegerUtils.toBytesUnsigned(n);
+			assertEquals(ECDSA.getSignatureByteArrayLength(jwsAlg) / 2, nBytes.length);
+			
+			Base64URL signatureB64 = Base64URL.encode(ByteUtils.concat(nBytes, nBytes));
+			
+			if (JWSAlgorithm.ES256.equals(jwsAlg)) {
+				// Validated test vector provided by user
+				assertEquals("_____wAAAAD__________7zm-q2nF56E87nKwvxjJVH_____AAAAAP__________vOb6racXnoTzucrC_GMlUQ", signatureB64.toString());
+				
+			}
+			
+			String jwsString = new String(jwsObject.getSigningInput(), StandardCharset.UTF_8) +
+				"." +
+				signatureB64;
+			
+			assertFalse(JWSObject.parse(jwsString).verify(new ECDSAVerifier(new ECKeyGenerator(curve).generate().toPublicJWK())));
+		}
+	}
+	
+	
+	public void testIsLegalSignature_zeroFilled() throws JOSEException {
 		
-		byte[] array = new byte[64];
-		Arrays.fill(array, Byte.MAX_VALUE);
-		assertFalse(ECDSA.concatSignatureAllZeroes(array));
+		int nMaxArraySize = ECDSA.getSignatureByteArrayLength(JWSAlgorithm.ES512);
 		
-		array = new byte[64];
-		array[63] = 1;
-		assertFalse(ECDSA.concatSignatureAllZeroes(array));
+		for (int sigSize=1; sigSize <= nMaxArraySize; sigSize++) {
+			
+			byte[] sigArray = new byte[sigSize];
+			
+			for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+				
+				try {
+					ECDSA.ensureLegalSignature(sigArray, jwsAlg);
+					fail();
+				} catch (JOSEException e) {
+					assertEquals("Blank signature", e.getMessage());
+				}
+			}
+		}
+	}
+	
+	
+	public void testIsLegalSignature_unsupportedJWSAlg() {
+		
+		List<JWSAlgorithm> jwsAlgorithmList = new LinkedList<>();
+		jwsAlgorithmList.addAll(JWSAlgorithm.Family.RSA);
+		jwsAlgorithmList.add(JWSAlgorithm.EdDSA);
+		
+		for (JWSAlgorithm jwsAlg: jwsAlgorithmList) {
+			
+			byte[] sigArray = new byte[32]; // some 1s filled array
+			Arrays.fill(sigArray, (byte)1);
+			
+			try {
+				ECDSA.ensureLegalSignature(sigArray, jwsAlg);
+				fail();
+			} catch (JOSEException e) {
+				assertEquals("Unsupported JWS algorithm: " + jwsAlg, e.getMessage());
+			}
+		}
+	}
+	
+	
+	public void testIsLegalSignature_illegalSignatureLength() throws JOSEException {
+		
+		ECKey ecJWK = new ECKeyGenerator(Curve.P_384).generate();
+		JWSObject jwsObject = new JWSObject(new JWSHeader(JWSAlgorithm.ES384), new Payload("Hello, world!"));
+		jwsObject.sign(new ECDSASigner(ecJWK));
+		
+		try {
+			ECDSA.ensureLegalSignature(jwsObject.getSignature().decode(), JWSAlgorithm.ES256);
+			fail();
+		} catch (JOSEException e) {
+			assertEquals("Illegal signature length", e.getMessage());
+		}
+		
+		try {
+			ECDSA.ensureLegalSignature(jwsObject.getSignature().decode(), JWSAlgorithm.ES512);
+			fail();
+		} catch (JOSEException e) {
+			assertEquals("Illegal signature length", e.getMessage());
+		}
+	}
+	
+	
+	public void testIsLegalSignature_rZero() throws JOSEException {
+		
+		for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+			
+			int sigLength = ECDSA.getSignatureByteArrayLength(jwsAlg);
+			
+			byte[] rBytes = new byte[sigLength / 2];
+			Arrays.fill(rBytes, (byte)1);
+			byte[] sBytes = new byte[sigLength / 2];
+			
+			byte[] sig = ByteUtils.concat(rBytes, sBytes);
+			try {
+				ECDSA.ensureLegalSignature(sig, jwsAlg);
+				fail();
+			} catch (JOSEException e) {
+				assertEquals("S and R must not be 0", e.getMessage());
+			}
+		}
+	}
+	
+	
+	public void testIsLegalSignature_sZero() throws JOSEException {
+		
+		for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+			
+			int sigLength = ECDSA.getSignatureByteArrayLength(jwsAlg);
+			
+			byte[] rBytes = new byte[sigLength / 2];
+			byte[] sBytes = new byte[sigLength / 2];
+			Arrays.fill(sBytes, (byte)1);
+			
+			byte[] sig = ByteUtils.concat(rBytes, sBytes);
+			try {
+				ECDSA.ensureLegalSignature(sig, jwsAlg);
+				fail();
+			} catch (JOSEException e) {
+				assertEquals("S and R must not be 0", e.getMessage());
+			}
+		}
+	}
+	
+	
+	public void testIsLegalSignature_rEqualsN() throws JOSEException {
+		
+		for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+			
+			Curve curve = Curve.forJWSAlgorithm(jwsAlg).iterator().next();
+			BigInteger n = ECParameterTable.get(curve).getOrder();
+			
+			int sigLength = ECDSA.getSignatureByteArrayLength(jwsAlg);
+			
+			byte[] rBytes = BigIntegerUtils.toBytesUnsigned(n);
+			byte[] sBytes = new byte[sigLength / 2];
+			Arrays.fill(sBytes, (byte)1);
+			
+			byte[] sig = ByteUtils.concat(rBytes, sBytes);
+			assertEquals(sigLength, sig.length);
+			
+			try {
+				ECDSA.ensureLegalSignature(sig, jwsAlg);
+				fail();
+			} catch (JOSEException e) {
+				assertEquals("S and R must not exceed N", e.getMessage());
+			}
+		}
+	}
+	
+	
+	public void testIsLegalSignature_sEqualsN() throws JOSEException {
+		
+		for (JWSAlgorithm jwsAlg: Arrays.asList(JWSAlgorithm.ES256, JWSAlgorithm.ES384, JWSAlgorithm.ES512)) {
+			
+			Curve curve = Curve.forJWSAlgorithm(jwsAlg).iterator().next();
+			BigInteger n = ECParameterTable.get(curve).getOrder();
+			
+			int sigLength = ECDSA.getSignatureByteArrayLength(jwsAlg);
+			
+			byte[] rBytes = new byte[sigLength / 2];
+			Arrays.fill(rBytes, (byte)1);
+			byte[] sBytes = BigIntegerUtils.toBytesUnsigned(n);
+			
+			byte[] sig = ByteUtils.concat(rBytes, sBytes);
+			assertEquals(sigLength, sig.length);
+			
+			try {
+				ECDSA.ensureLegalSignature(sig, jwsAlg);
+				fail();
+			} catch (JOSEException e) {
+				assertEquals("S and R must not exceed N", e.getMessage());
+			}
+		}
 	}
 }
