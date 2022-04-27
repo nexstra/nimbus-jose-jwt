@@ -592,6 +592,7 @@ public class ECKeyTest extends TestCase {
 				.keyUse(use)
 				.keyOperations(ops)
 				.build();
+			fail();
 		} catch (IllegalStateException e) {
 			assertEquals("The key use \"use\" and key options \"key_ops\" parameters are not consistent, see RFC 7517, section 4.3", e.getMessage());
 		}

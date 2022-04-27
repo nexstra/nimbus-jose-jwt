@@ -38,7 +38,7 @@ import com.nimbusds.jwt.JWTClaimNames;
  * Tests JWE header parsing and serialisation.
  *
  * @author Vladimir Dzhuvinov
- * @version 2022-03-07
+ * @version 2022-04-27
  */
 public class JWEHeaderTest extends TestCase {
 
@@ -305,12 +305,9 @@ public class JWEHeaderTest extends TestCase {
 
 		try {
 			new JWEHeader(new JWEAlgorithm("none"), EncryptionMethod.A128CBC_HS256);
-
-			fail("Failed to raise exception");
-
+			fail();
 		} catch (IllegalArgumentException e) {
-
-			// ok
+			assertEquals("The JWE algorithm cannot be \"none\"", e.getMessage());
 		}
 	}
 

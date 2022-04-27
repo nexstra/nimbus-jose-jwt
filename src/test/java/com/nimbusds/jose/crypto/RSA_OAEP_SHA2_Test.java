@@ -231,6 +231,7 @@ public class RSA_OAEP_SHA2_Test extends TestCase {
 			
 			try {
 				jwe.encrypt(new RSAEncrypter(rsaPublicKey, cek));
+				fail();
 			} catch (KeyLengthException e) {
 				assertEquals("The Content Encryption Key (CEK) length for A128CBC-HS256 must be 256 bits", e.getMessage());
 			}

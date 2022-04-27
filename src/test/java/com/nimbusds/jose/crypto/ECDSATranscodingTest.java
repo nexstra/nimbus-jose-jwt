@@ -40,7 +40,7 @@ import com.nimbusds.jose.util.StandardCharset;
 
 /**
  * @author Vladimir Dzhuvinov
- * @version 2022-04-21
+ * @version 2022-04-27
  */
 public class ECDSATranscodingTest extends TestCase {
 	
@@ -177,6 +177,7 @@ public class ECDSATranscodingTest extends TestCase {
 		
 		try {
 			ECDSA.transcodeSignatureToDER(new byte[64]);
+			fail();
 		} catch (JOSEException e) {
 			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
 			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);
@@ -203,6 +204,7 @@ public class ECDSATranscodingTest extends TestCase {
 		
 		try {
 			ECDSA.transcodeSignatureToDER(ByteUtils.concat(rBytes, sBytes));
+			fail();
 		} catch (JOSEException e) {
 			assertEquals("Index 64 out of bounds for length 64", e.getMessage());
 			assertTrue(e.getCause() instanceof ArrayIndexOutOfBoundsException);

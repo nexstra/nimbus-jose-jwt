@@ -18,6 +18,7 @@
 package com.nimbusds.jose.crypto;
 
 
+import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,7 +35,8 @@ import org.junit.Assert;
 
 /**
  * @author Tim McLean
- * @version 2018-07-12
+ * @version Vladimir Dzhuvinov
+ * @version 2022-04-27
  */
 public class Ed25519SignVerifyTest extends TestCase {
 
@@ -50,7 +52,7 @@ public class Ed25519SignVerifyTest extends TestCase {
 	}
 
 
-	public void testInvalidSignerInstantiation() throws Exception {
+	public void testInvalidSignerInstantiation() throws GeneralSecurityException {
 
 		Ed25519Sign.KeyPair tk = Ed25519Sign.KeyPair.newKeyPair();
 		OctetKeyPair k1 = new OctetKeyPair.Builder(Curve.X25519, Base64URL.encode(tk.getPublicKey())).
@@ -65,7 +67,7 @@ public class Ed25519SignVerifyTest extends TestCase {
 			fail("should fail if key provided with wrong curve");
 
 		} catch (JOSEException e) {
-			// Passed
+			assertEquals("Ed25519Signer only supports OctetKeyPairs with crv=Ed25519", e.getMessage());
 		}
 
 		try {
@@ -73,10 +75,14 @@ public class Ed25519SignVerifyTest extends TestCase {
 			fail("should fail if public key provided");
 
 		} catch (JOSEException e) {
-			// Passed
+			assertEquals("The OctetKeyPair doesn't contain a private part", e.getMessage());
 		}
-
-		new Ed25519Signer(k2);
+		
+		try {
+			new Ed25519Signer(k2);
+		} catch (JOSEException e) {
+			fail();
+		}
 	}
 
 
@@ -110,14 +116,21 @@ public class Ed25519SignVerifyTest extends TestCase {
 	}
 
 
-	public void testInvalidHeader() throws Exception {
+	public void testInvalidHeader() throws GeneralSecurityException {
 
 		Ed25519Sign.KeyPair tk = Ed25519Sign.KeyPair.newKeyPair();
 		OctetKeyPair k = new OctetKeyPair.Builder(Curve.Ed25519, Base64URL.encode(tk.getPublicKey())).
 			d(Base64URL.encode(tk.getPrivateKey())).
 			build();
-		Ed25519Signer signer = new Ed25519Signer(k);
-		Ed25519Verifier verifier = new Ed25519Verifier(k.toPublicJWK());
+		Ed25519Signer signer;
+		Ed25519Verifier verifier;
+		try {
+			signer = new Ed25519Signer(k);
+			verifier = new Ed25519Verifier(k.toPublicJWK());
+		} catch (JOSEException e) {
+			fail(e.getMessage());
+			return;
+		}
 
 		JWSHeader h1 = new JWSHeader.Builder(JWSAlgorithm.HS256).
 			build();
@@ -127,7 +140,7 @@ public class Ed25519SignVerifyTest extends TestCase {
 			fail("should fail with alg HS256");
 
 		} catch (JOSEException e) {
-			// Passed
+			assertEquals("Ed25519Signer requires alg=EdDSA in JWSHeader", e.getMessage());
 		}
 
 		try {
@@ -136,7 +149,7 @@ public class Ed25519SignVerifyTest extends TestCase {
 			fail("should fail with alg HS256");
 
 		} catch (JOSEException e) {
-			// Passed
+			assertEquals("Ed25519Verifier requires alg=EdDSA in JWSHeader", e.getMessage());
 		}
 
 		JWSHeader h2 = new JWSHeader.Builder(JWSAlgorithm.ES256).
@@ -147,7 +160,7 @@ public class Ed25519SignVerifyTest extends TestCase {
 			fail("should fail with alg ES256");
 
 		} catch (JOSEException e) {
-			// Passed
+			assertEquals("Ed25519Signer requires alg=EdDSA in JWSHeader", e.getMessage());
 		}
 
 		try {
@@ -156,7 +169,7 @@ public class Ed25519SignVerifyTest extends TestCase {
 			fail("should fail with alg ES256");
 
 		} catch (JOSEException e) {
-			// Passed
+			assertEquals("Ed25519Verifier requires alg=EdDSA in JWSHeader", e.getMessage());
 		}
 	}
 

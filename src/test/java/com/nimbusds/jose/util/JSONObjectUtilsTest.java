@@ -35,7 +35,7 @@ import com.nimbusds.jose.HeaderParameterNames;
  * Tests the JSON object utilities.
  *
  * @author Vladimir Dzhuvinov
- * @version 2021-10-08
+ * @version 2022-04-27
  */
 public class JSONObjectUtilsTest extends TestCase {
 

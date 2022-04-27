@@ -50,7 +50,7 @@ import com.nimbusds.jose.util.StandardCharset;
  * Tests ECDH encryption and decryption.
  *
  * @author Vladimir Dzhuvinov
- * @version 2022-01-24
+ * @version 2022-04-27
  */
 public class ECDHCryptoTest extends TestCase {
 
@@ -757,14 +757,14 @@ public class ECDHCryptoTest extends TestCase {
 			new ECDHEncrypter(ecPublicKey);
 			fail();
 		} catch (JOSEException e) {
-			// ok
+			assertEquals("Unsupported elliptic curve unknown, must be P-256, P-384 or P-521", e.getMessage());
 		}
 
 		try {
 			new ECDHDecrypter(ecPrivateKey);
 			fail();
 		} catch (JOSEException e) {
-			// ok
+			assertEquals("Unsupported elliptic curve unknown, must be P-256, P-384 or P-521", e.getMessage());
 		}
 	}
 
