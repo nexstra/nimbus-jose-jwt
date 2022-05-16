@@ -22,18 +22,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 
-import com.nimbusds.jose.Algorithm;
-import com.nimbusds.jose.EncryptionMethod;
-import com.nimbusds.jose.JWEAlgorithm;
-import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.impl.ECDSA;
+import com.nimbusds.jose.crypto.impl.RSASSA;
 
 
 /**
  * Java Cryptography Architecture (JCA) support helper.
  *
- * @version 2021-09-22
+ * @version 2022-05-16
  */
 public final class JCASupport {
 
@@ -85,7 +85,7 @@ public final class JCASupport {
 	
 	
 	/**
-	 * Checks if a JOSE algorithm is supported by the the specified JCA
+	 * Checks if a JOSE algorithm is supported by the specified JCA
 	 * provider.
 	 *
 	 * @param alg      The JOSE algorithm. Must not be {@code null}.
@@ -136,7 +136,7 @@ public final class JCASupport {
 
 
 	/**
-	 * Checks if a JWS algorithm is supported by the the specified JCA
+	 * Checks if a JWS algorithm is supported by the specified JCA
 	 * provider.
 	 *
 	 * @param alg      The JWS algorithm. Must not be {@code null}.
@@ -158,47 +158,30 @@ public final class JCASupport {
 			} else {
 				return false;
 			}
-			return provider.getService("KeyGenerator", jcaName) != null;
+			try {
+				Mac.getInstance(jcaName, provider);
+			} catch (NoSuchAlgorithmException e) {
+				return false;
+			}
+			return true;
 		}
 
 		if (JWSAlgorithm.Family.RSA.contains(alg)) {
-			String jcaName;
-			String jcaNameAlt = null;
-			if (alg.equals(JWSAlgorithm.RS256)) {
-				jcaName = "SHA256withRSA";
-			} else if (alg.equals(JWSAlgorithm.RS384)) {
-				jcaName = "SHA384withRSA";
-			} else if (alg.equals(JWSAlgorithm.RS512)) {
-				jcaName = "SHA512withRSA";
-			} else if (alg.equals(JWSAlgorithm.PS256)) {
-				jcaName = "RSASSA-PSS";
-				jcaNameAlt = "SHA256withRSAandMGF1";
-			} else if (alg.equals(JWSAlgorithm.PS384)) {
-				jcaName = "RSASSA-PSS";
-				jcaNameAlt = "SHA384withRSAandMGF1";
-			} else if (alg.equals(JWSAlgorithm.PS512)) {
-				jcaName = "RSASSA-PSS";
-				jcaNameAlt = "SHA512withRSAandMGF1";
-			} else {
+			try {
+				RSASSA.getSignerAndVerifier(alg, provider);
+			} catch (JOSEException e) {
 				return false;
 			}
-			// Also try with alternative JCA name if set
-			return provider.getService("Signature", jcaName) != null ||
-				(jcaNameAlt != null && provider.getService("Signature", jcaNameAlt) != null);
+			return true;
 		}
 
 		if (JWSAlgorithm.Family.EC.contains(alg)) {
-			String jcaName;
-			if (alg.equals(JWSAlgorithm.ES256)) {
-				jcaName = "SHA256withECDSA";
-			} else if (alg.equals(JWSAlgorithm.ES384)) {
-				jcaName = "SHA384withECDSA";
-			} else if (alg.equals(JWSAlgorithm.ES512)) {
-				jcaName = "SHA512withECDSA";
-			} else {
+			try {
+				ECDSA.getSignerAndVerifier(alg, provider);
+			} catch (JOSEException e) {
 				return false;
 			}
-			return provider.getService("Signature", jcaName) != null;
+			return true;
 		}
 
 		return false;
@@ -228,7 +211,7 @@ public final class JCASupport {
 
 
 	/**
-	 * Checks if a JWE algorithm is supported by the the specified JCA
+	 * Checks if a JWE algorithm is supported by the specified JCA
 	 * provider.
 	 *
 	 * @param alg      The JWE algorithm. Must not be {@code null}.

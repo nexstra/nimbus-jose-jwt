@@ -1435,3 +1435,6 @@ version 9.22 (2022-04-22)
       Java runtimes and JCE providers vulnerable to CVE-2022-21449 (iss #472).
     * Makes ECParameterTable public.
     * Adds ByteUtils.isZeroFilled static method.
+
+version x.xx (2022-05-xx)
+    * Simplifies JCASupport.isSupported(JWSAlgorithm,Provider)
