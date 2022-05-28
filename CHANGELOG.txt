@@ -1438,4 +1438,6 @@ version 9.22 (2022-04-22)
 
 version 9.23 (2022-05-28)
     * Adds JWKMatcher support for matching JWKs with present "x5c".
+    * Updates JWKMatcher to match "x5t#S256" against a key's "x5t#S256"
+      parameter as well as the computed thumbprint of a "x5c" parameter.
     * Simplifies JCASupport.isSupported(JWSAlgorithm,Provider)

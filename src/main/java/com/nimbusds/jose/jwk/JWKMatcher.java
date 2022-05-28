@@ -18,6 +18,8 @@
 package com.nimbusds.jose.jwk;
 
 
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.*;
 
 import net.jcip.annotations.Immutable;
@@ -27,6 +29,7 @@ import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.util.Base64URL;
+import com.nimbusds.jose.util.X509CertUtils;
 
 
 /**
@@ -1408,8 +1411,23 @@ public class JWKMatcher {
 		}
 
 		if (x5tS256s != null) {
-			if (! x5tS256s.contains(key.getX509CertSHA256Thumbprint()))
+			
+			boolean matchingCertFound = false;
+			
+			if (key.getX509CertChain() != null && ! key.getX509CertChain().isEmpty()) {
+				try {
+					X509Certificate cert = X509CertUtils.parseWithException(key.getX509CertChain().get(0).decode());
+					matchingCertFound = x5tS256s.contains(X509CertUtils.computeSHA256Thumbprint(cert));
+				} catch (CertificateException e) {
+					// Ignore
+				}
+			}
+			
+			boolean matchingX5T256Found = x5tS256s.contains(key.getX509CertSHA256Thumbprint());
+			
+			if (! matchingCertFound && ! matchingX5T256Found) {
 				return false;
+			}
 		}
 		
 		if (hasX5C) {
@@ -1418,6 +1436,7 @@ public class JWKMatcher {
 
 		return true;
 	}
+	
 	
 	@Override
 	public String toString() {

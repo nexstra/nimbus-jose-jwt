@@ -984,6 +984,7 @@ public class JWKMatcherTest extends TestCase {
 		assertTrue(JWKMatcher.forJWSHeader(header).matches(okp));
 	}
 
+	
 	public void testMatchThumbprint() {
 
 		RSAKey rsa = new RSAKey.Builder(new Base64URL("n"), new Base64URL("e"))
@@ -996,6 +997,57 @@ public class JWKMatcherTest extends TestCase {
 
 		assertTrue(matcher.matches(rsa));
 	}
+	
+	
+	public void testMatchX5C_byThumbprint() throws CertificateEncodingException, IOException, OperatorCreationException, JOSEException {
+		
+		X509Certificate cert = X509CertUtils.parse(RSA_JWK_WITH_X5C.getX509CertChain().get(0).decode());
+		
+		Base64URL x5t256 = X509CertUtils.computeSHA256Thumbprint(cert);
+		
+		JWKMatcher matcher = new JWKMatcher.Builder()
+			.x509CertSHA256Thumbprint(x5t256)
+			.build();
+		
+		assertEquals(Collections.singleton(x5t256), matcher.getX509CertSHA256Thumbprints());
+		
+		assertEquals("x5t#S256=" + x5t256, matcher.toString());
+		
+		assertTrue(matcher.matches(RSA_JWK_WITH_X5C));
+		
+		assertFalse(matcher.matches(new RSAKey.Builder(RSA_JWK_WITH_X5C).x509CertChain(null).build()));
+		
+		RSAKey OTHER_RSA_JWK_WITH_X5C = generateRSAKeyWithSelfSignedCert();
+		
+		assertFalse(matcher.matches(OTHER_RSA_JWK_WITH_X5C));
+	}
+	
+	
+	public void testMatch_byThumbprint_byPresentCertWithMatchingThumbprint() throws CertificateEncodingException, IOException, OperatorCreationException, JOSEException {
+		
+		X509Certificate cert = X509CertUtils.parse(RSA_JWK_WITH_X5C.getX509CertChain().get(0).decode());
+		
+		Base64URL x5t256 = X509CertUtils.computeSHA256Thumbprint(cert);
+		
+		JWKMatcher matcher = new JWKMatcher.Builder()
+			.x509CertSHA256Thumbprint(x5t256)
+			.build();
+		
+		assertEquals(Collections.singleton(x5t256), matcher.getX509CertSHA256Thumbprints());
+		
+		assertEquals("x5t#S256=" + x5t256, matcher.toString());
+		
+		RSAKey rsaJWK = new RSAKey.Builder(RSA_JWK_WITH_X5C)
+			.x509CertSHA256Thumbprint(x5t256)
+			.build();
+		
+		assertTrue(matcher.matches(rsaJWK));
+		
+		RSAKey OTHER_RSA_JWK_WITH_X5C = generateRSAKeyWithSelfSignedCert();
+		
+		assertFalse(matcher.matches(OTHER_RSA_JWK_WITH_X5C));
+	}
+	
 	
 	public void testMatchWithX5C_defaultFalse() {
 		
@@ -1036,6 +1088,7 @@ public class JWKMatcherTest extends TestCase {
 		assertTrue(JWKMatcher.forJWSHeader(header).matches(rsa));
 	}
 
+	
 	public void testMismatchJWSHeader() {
 		RSAKey rsa = new RSAKey.Builder(new Base64URL("n"), new Base64URL("e"))
 			.algorithm(JWSAlgorithm.RS256)
@@ -1050,6 +1103,7 @@ public class JWKMatcherTest extends TestCase {
 		assertFalse(JWKMatcher.forJWSHeader(header).matches(rsa));
 	}
 
+	
 	public void testUnsupportedJWSHeader() {
 		JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.parse("unsupported"))
 			.build();
@@ -1057,6 +1111,7 @@ public class JWKMatcherTest extends TestCase {
 		assertNull(JWKMatcher.forJWSHeader(header));
 	}
 
+	
 	public void testMatchJWEHeader() {
 		RSAKey rsa = new RSAKey.Builder(new Base64URL("n"), new Base64URL("e"))
 			.algorithm(JWEAlgorithm.RSA_OAEP_256)
@@ -1071,6 +1126,7 @@ public class JWKMatcherTest extends TestCase {
 		assertTrue(JWKMatcher.forJWEHeader(header).matches(rsa));
 	}
 
+	
 	public void testMismatchJWEHeader() {
 		RSAKey rsa = new RSAKey.Builder(new Base64URL("n"), new Base64URL("e"))
 			.algorithm(JWEAlgorithm.RSA_OAEP_256)
