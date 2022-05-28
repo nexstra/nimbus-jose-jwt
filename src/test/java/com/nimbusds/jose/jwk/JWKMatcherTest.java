@@ -18,38 +18,47 @@
 package com.nimbusds.jose.jwk;
 
 
+import java.io.IOException;
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
 import java.util.*;
 import javax.crypto.KeyGenerator;
 
-import com.nimbusds.jose.Algorithm;
-import com.nimbusds.jose.EncryptionMethod;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWEAlgorithm;
-import com.nimbusds.jose.JWEHeader;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
+import junit.framework.TestCase;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.util.ByteUtils;
-import junit.framework.TestCase;
+import com.nimbusds.jose.util.X509CertUtils;
 
 
 /**
  * Tests the JWK matcher.
  *
  * @author Vladimir Dzhuvinov
- * @version 2020-05-12
+ * @version 2022-05-28
  */
 public class JWKMatcherTest extends TestCase {
 	
 	private static final Base64URL EC_P256_X;
 	
 	private static final Base64URL EC_P256_Y;
+	
+	private static final RSAKey RSA_JWK_WITH_X5C;
 	
 	static {
 		try {
@@ -66,9 +75,42 @@ public class JWKMatcherTest extends TestCase {
 			EC_P256_X = ecJWK.getX();
 			EC_P256_Y = ecJWK.getY();
 			
+			RSA_JWK_WITH_X5C = generateRSAKeyWithSelfSignedCert();
+			
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+	
+	private static RSAKey generateRSAKeyWithSelfSignedCert()
+		throws IOException, OperatorCreationException, JOSEException, CertificateEncodingException {
+		
+		RSAKey rsaJWK = new RSAKeyGenerator(2048)
+			.generate();
+		
+		X500Name issuer = new X500Name("cn=c2id");
+		BigInteger serialNumber = new BigInteger(64, new SecureRandom());
+		Date now = new Date();
+		Date nbf = new Date(now.getTime() - 1000L);
+		Date exp = new Date(now.getTime() + 365*24*60*60*1000L); // in 1 year
+		X500Name subject = new X500Name("cn=c2id");
+		JcaX509v3CertificateBuilder x509certBuilder = new JcaX509v3CertificateBuilder(
+			issuer,
+			serialNumber,
+			nbf,
+			exp,
+			subject,
+			rsaJWK.toRSAPublicKey()
+		);
+		
+		JcaContentSignerBuilder signerBuilder = new JcaContentSignerBuilder("SHA256withRSA");
+		X509CertificateHolder certHolder = x509certBuilder.build(signerBuilder.build(rsaJWK.toRSAPrivateKey()));
+		X509Certificate cert = X509CertUtils.parse(certHolder.getEncoded());
+		assertNotNull(cert);
+		
+		return new RSAKey.Builder(rsaJWK)
+			.x509CertChain(Collections.singletonList(Base64.encode(cert.getEncoded())))
+			.build();
 	}
 
 
@@ -91,6 +133,7 @@ public class JWKMatcherTest extends TestCase {
 		assertEquals(0, matcher.getMaxSize());
 		assertNull(matcher.getKeySizes());
 		assertNull(matcher.getCurves());
+		assertFalse(matcher.hasX509CertChain());
 	}
 	
 	
@@ -129,6 +172,7 @@ public class JWKMatcherTest extends TestCase {
 		assertEquals(0, matcher.getMaxSize());
 		assertNull(matcher.getKeySizes());
 		assertNull(matcher.getCurves());
+		assertFalse(matcher.hasX509CertChain());
 	}
 	
 	
@@ -167,6 +211,7 @@ public class JWKMatcherTest extends TestCase {
 		assertEquals(0, matcher.getMaxSize());
 		assertNull(matcher.getKeySizes());
 		assertNull(matcher.getCurves());
+		assertFalse(matcher.hasX509CertChain());
 	}
 
 
@@ -209,6 +254,7 @@ public class JWKMatcherTest extends TestCase {
 		assertEquals(256, matcher.getMaxSize());
 		assertNull(matcher.getKeySizes());
 		assertEquals(curves, matcher.getCurves());
+		assertFalse(matcher.hasX509CertChain());
 	}
 
 
@@ -255,10 +301,11 @@ public class JWKMatcherTest extends TestCase {
 		assertTrue(matcher.getKeySizes().contains(256));
 		assertEquals(2, matcher.getKeySizes().size());
 		assertEquals(curves, matcher.getCurves());
+		assertFalse(matcher.hasX509CertChain());
 	}
 
 
-	public void testAllSetConstructor() throws JOSEException {
+	public void testAllSet5thDeprecatedConstructor() {
 
 		Set<KeyType> types = new HashSet<>();
 		types.add(KeyType.RSA);
@@ -305,6 +352,58 @@ public class JWKMatcherTest extends TestCase {
 		assertEquals(2, matcher.getKeySizes().size());
 		assertEquals(curves, matcher.getCurves());
 		assertEquals(thumbprints, matcher.getX509CertSHA256Thumbprints());
+		assertFalse(matcher.hasX509CertChain());
+	}
+
+
+	public void testAllSetConstructor() {
+
+		Set<KeyType> types = new HashSet<>();
+		types.add(KeyType.RSA);
+
+		Set<KeyUse> uses = new HashSet<>();
+		uses.add(KeyUse.SIGNATURE);
+
+		Set<KeyOperation> ops = new HashSet<>();
+		ops.add(KeyOperation.SIGN);
+		ops.add(KeyOperation.VERIFY);
+
+		Set<Algorithm> algs = new HashSet<>();
+		algs.add(JWSAlgorithm.PS256);
+
+		Set<String> ids = new HashSet<>();
+		ids.add("1");
+		
+		Set<Integer> sizes = new HashSet<>(Arrays.asList(128, 256));
+		
+		Set<Curve> curves = new HashSet<>();
+		curves.add(Curve.P_256);
+		curves.add(Curve.P_384);
+
+		Set<Base64URL> thumbprints = new HashSet<>();
+		thumbprints.add(Base64URL.encode("thumbprint"));
+
+		JWKMatcher matcher = new JWKMatcher(types, uses, ops, algs, ids, true, true, true, true, 128, 256, sizes, curves, thumbprints, true);
+
+		assertEquals(types, matcher.getKeyTypes());
+		assertEquals(uses, matcher.getKeyUses());
+		assertEquals(ops, matcher.getKeyOperations());
+		assertEquals(algs, matcher.getAlgorithms());
+		assertEquals(ids, matcher.getKeyIDs());
+		assertTrue(matcher.hasKeyUse());
+		assertTrue(matcher.hasKeyID());
+		assertTrue(matcher.isPrivateOnly());
+		assertTrue(matcher.isPublicOnly());
+		assertEquals(128, matcher.getMinKeySize());
+		assertEquals(128, matcher.getMinSize());
+		assertEquals(256, matcher.getMaxKeySize());
+		assertEquals(256, matcher.getMaxSize());
+		assertTrue(matcher.getKeySizes().contains(128));
+		assertTrue(matcher.getKeySizes().contains(256));
+		assertEquals(2, matcher.getKeySizes().size());
+		assertEquals(curves, matcher.getCurves());
+		assertEquals(thumbprints, matcher.getX509CertSHA256Thumbprints());
+		assertTrue(matcher.hasX509CertChain());
 	}
 	
 	
@@ -364,6 +463,7 @@ public class JWKMatcherTest extends TestCase {
 		assertEquals(sizes, matcher.getKeySizes());
 		assertEquals(curves, matcher.getCurves());
 		assertEquals(thumbprints, matcher.getX509CertSHA256Thumbprints());
+		assertFalse(matcher.hasX509CertChain());
 	}
 	
 	
@@ -422,6 +522,7 @@ public class JWKMatcherTest extends TestCase {
 		Set<Base64URL> thumbprints = matcher.getX509CertSHA256Thumbprints();
 		assertTrue(thumbprints.containsAll(Arrays.asList(Base64URL.encode("thumbprint"), null)));
 		assertEquals(2, thumbprints.size());
+		assertFalse(matcher.hasX509CertChain());
 	}
 
 
@@ -895,7 +996,32 @@ public class JWKMatcherTest extends TestCase {
 
 		assertTrue(matcher.matches(rsa));
 	}
+	
+	public void testMatchWithX5C_defaultFalse() {
+		
+		JWKMatcher matcher = new JWKMatcher.Builder()
+			.build();
+		
+		assertFalse(matcher.hasX509CertChain());
+	}
+	
+	
+	public void testMatchWithX5C() {
+		
+		JWKMatcher matcher = new JWKMatcher.Builder()
+			.hasX509CertChain(true)
+			.build();
+		
+		assertTrue(matcher.hasX509CertChain());
+		
+		assertEquals("has_x5c=true", matcher.toString());
+		
+		assertTrue(matcher.matches(RSA_JWK_WITH_X5C));
+		
+		assertFalse(matcher.matches(new RSAKey.Builder(RSA_JWK_WITH_X5C).x509CertChain(null).build()));
+	}
 
+	
 	public void testMatchJWSHeader() {
 		RSAKey rsa = new RSAKey.Builder(new Base64URL("n"), new Base64URL("e"))
 			.algorithm(JWSAlgorithm.RS256)

@@ -20,12 +20,13 @@ package com.nimbusds.jose.jwk;
 
 import java.util.*;
 
+import net.jcip.annotations.Immutable;
+
 import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.JWEHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.util.Base64URL;
-import net.jcip.annotations.Immutable;
 
 
 /**
@@ -45,6 +46,7 @@ import net.jcip.annotations.Immutable;
  *     <li>Minimum, maximum or exact key sizes.
  *     <li>Any, unspecified, one or more curves for EC and OKP keys (crv).
  *     <li>X.509 certificate SHA-256 thumbprint.
+ *     <li>Has X.509 certificate.
  * </ul>
  *
  * <p>Matching by JWK thumbprint (RFC 7638), X.509 certificate URL and X.509
@@ -53,7 +55,7 @@ import net.jcip.annotations.Immutable;
  * @author Vladimir Dzhuvinov
  * @author Josh Cummings
  * @author Ben Arena
- * @version 2020-05-19
+ * @version 2022-05-28
  */
 @Immutable
 public class JWKMatcher {
@@ -141,6 +143,12 @@ public class JWKMatcher {
 	 * The X.509 certificate SHA-256 thumbprints to match.
 	 */
 	private final Set<Base64URL> x5tS256s;
+	
+	
+	/**
+	 * {@code true} to match a key with a set X.509 certificate chain.
+	 */
+	private final boolean hasX5C;
 
 	
 	/**
@@ -239,6 +247,13 @@ public class JWKMatcher {
 		 * The X.509 certificate SHA-256 thumbprints to match.
 		 */
 		private Set<Base64URL> x5tS256s;
+		
+		
+		/**
+		 * {@code true} to match a key with a set X.509 certificate
+		 * chain.
+		 */
+		private boolean hasX5C = false;
 
 		
 		/**
@@ -676,6 +691,7 @@ public class JWKMatcher {
 			return this;
 		}
 
+		
 		/**
 		 * Sets multiple X.509 certificate SHA-256 thumbprints to
 		 * match.
@@ -702,7 +718,22 @@ public class JWKMatcher {
 			this.x5tS256s = x5tS256s;
 			return this;
 		}
+		
+		
+		/**
+		 * Sets X.509 certificate chain presence matching.
+		 *
+		 * @param hasX5C {@code true} to match a key with a set X.509
+		 *               certificate chain.
+		 *
+		 * @return This builder.
+		 */
+		public Builder hasX509CertChain(final boolean hasX5C) {
+			this.hasX5C = hasX5C;
+			return this;
+		}
 
+		
 		/**
 		 * Builds a new JWK matcher.
 		 *
@@ -710,7 +741,7 @@ public class JWKMatcher {
 		 */
 		public JWKMatcher build() {
 
-			return new JWKMatcher(types, uses, ops, algs, ids, hasUse, hasID, privateOnly, publicOnly, minSizeBits, maxSizeBits, sizesBits, curves, x5tS256s);
+			return new JWKMatcher(types, uses, ops, algs, ids, hasUse, hasID, privateOnly, publicOnly, minSizeBits, maxSizeBits, sizesBits, curves, x5tS256s, hasX5C);
 		}
 	}
 
@@ -902,6 +933,7 @@ public class JWKMatcher {
 		this(types, uses, ops, algs, ids, hasUse, hasID, privateOnly, publicOnly, minSizeBits, maxSizeBits, sizesBits, curves, null);
 	}
 
+	
 	/**
 	 * Creates a new JSON Web Key (JWK) matcher.
 	 *
@@ -930,6 +962,56 @@ public class JWKMatcher {
 	 * @param x5tS256s    The X.509 certificate thumbprints to match,
 	 *                    {@code null} if not specified.
 	 */
+	@Deprecated
+	public JWKMatcher(final Set<KeyType> types,
+			  final Set<KeyUse> uses,
+			  final Set<KeyOperation> ops,
+			  final Set<Algorithm> algs,
+			  final Set<String> ids,
+			  final boolean hasUse,
+			  final boolean hasID,
+			  final boolean privateOnly,
+			  final boolean publicOnly,
+			  final int minSizeBits,
+			  final int maxSizeBits,
+			  final Set<Integer> sizesBits,
+			  final Set<Curve> curves,
+			  final Set<Base64URL> x5tS256s) {
+
+		this(types, uses, ops, algs, ids, hasUse, hasID, privateOnly, publicOnly, minSizeBits, maxSizeBits, sizesBits, curves, x5tS256s, false);
+	}
+
+	
+	/**
+	 * Creates a new JSON Web Key (JWK) matcher.
+	 *
+	 * @param types       The key types to match, {@code null} if not
+	 *                    specified.
+	 * @param uses        The public key uses to match, {@code null} if not
+	 *                    specified.
+	 * @param ops         The key operations to match, {@code null} if not
+	 *                    specified.
+	 * @param algs        The JOSE algorithms to match, {@code null} if not
+	 *                    specified.
+	 * @param ids         The key IDs to match, {@code null} if not
+	 *                    specified.
+	 * @param hasUse      {@code true} to match a key with a set use.
+	 * @param hasID       {@code true} to match a key with a set ID.
+	 * @param privateOnly {@code true} to match a private key.
+	 * @param publicOnly  {@code true} to match a public only key.
+	 * @param minSizeBits The minimum key size in bits, zero implies no
+	 *                    minimum size limit.
+	 * @param maxSizeBits The maximum key size in bits, zero implies no
+	 *                    maximum size limit.
+	 * @param sizesBits   The key sizes in bits, {@code null} if not
+	 *                    specified.
+	 * @param curves      The curves to match (for EC and OKP keys),
+	 *                    {@code null} if not specified.
+	 * @param x5tS256s    The X.509 certificate thumbprints to match,
+	 *                    {@code null} if not specified.
+	 * @param hasX5C      {@code true} to match a key with a set X.509
+	 *                    certificate chain.
+	 */
 	public JWKMatcher(final Set<KeyType> types,
 					  final Set<KeyUse> uses,
 					  final Set<KeyOperation> ops,
@@ -943,7 +1025,8 @@ public class JWKMatcher {
 					  final int maxSizeBits,
 					  final Set<Integer> sizesBits,
 					  final Set<Curve> curves,
-					  final Set<Base64URL> x5tS256s) {
+					  final Set<Base64URL> x5tS256s,
+			  		  final boolean hasX5C) {
 
 		this.types = types;
 		this.uses = uses;
@@ -959,8 +1042,10 @@ public class JWKMatcher {
 		this.sizesBits = sizesBits;
 		this.curves = curves;
 		this.x5tS256s = x5tS256s;
+		this.hasX5C = hasX5C;
 	}
 
+	
 	/**
 	 * Returns a {@link JWKMatcher} based on the given {@link JWEHeader}.
 	 *
@@ -993,6 +1078,7 @@ public class JWKMatcher {
 			.build();
 	}
 
+	
 	/**
 	 * Returns a {@link JWKMatcher} based on the given {@link JWSHeader}.
 	 *
@@ -1049,6 +1135,7 @@ public class JWKMatcher {
 			return null; // Unsupported algorithm
 		}
 	}
+	
 
 	/**
 	 * Returns the key types to match.
@@ -1233,6 +1320,20 @@ public class JWKMatcher {
 		
 		return x5tS256s;
 	}
+	
+	
+	/**
+	 * Returns {@code true} if keys with a set X.509 certificate chain are
+	 * matched.
+	 *
+	 * @return {@code true} if keys with a set X.509 certificate are
+	 *         matched, else {@code false}.
+	 */
+	public boolean hasX509CertChain() {
+		
+		return hasX5C;
+	}
+	
 
 	/**
 	 * Returns {@code true} if the specified JWK matches.
@@ -1307,7 +1408,12 @@ public class JWKMatcher {
 		}
 
 		if (x5tS256s != null) {
-			return x5tS256s.contains(key.getX509CertSHA256Thumbprint());
+			if (! x5tS256s.contains(key.getX509CertSHA256Thumbprint()))
+				return false;
+		}
+		
+		if (hasX5C) {
+			return key.getX509CertChain() != null && !key.getX509CertChain().isEmpty();
 		}
 
 		return true;
@@ -1350,6 +1456,9 @@ public class JWKMatcher {
 		append(sb, "size", sizesBits);
 		append(sb, JWKParameterNames.ELLIPTIC_CURVE, curves);
 		append(sb, JWKParameterNames.X_509_CERT_SHA_256_THUMBPRINT, x5tS256s);
+		if (hasX5C) {
+			sb.append("has_x5c=true" );
+		}
 			
 		return sb.toString().trim();
 	}
